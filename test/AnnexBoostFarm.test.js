@@ -14,6 +14,7 @@ describe("AnnexBoostFarm", function() {
     this.vaulter = this.signers[6]
 
     this.AnnexBoostFarm = await ethers.getContractFactory("AnnexBoostFarm")
+    this.BoostToken = await ethers.getContractFactory("AgencyWolfBillionaireClub")
     this.ANNToken = await ethers.getContractFactory("ANN")
     this.ERC20Mock = await ethers.getContractFactory("ERC20Mock", this.minter)
   })
@@ -21,29 +22,53 @@ describe("AnnexBoostFarm", function() {
   beforeEach(async function() {
     this.annex = await this.ANNToken.deploy(this.annOwner.address)
     await this.annex.deployed()
+    this.boostToken = await this.BoostToken.deploy(
+      "AgencyWolfBillionaireClub",
+      "AWBC",
+      "https://nftassets.annex.finance/ipfs/QmeHoeon52U4HYuemkfuKtzxcSZV2xSW69rBeEKKPzav4G",
+      this.annex.address
+    )
+    await this.boostToken.deployed()
     // console.log("ann owner: ", await this.annex.owner())
     // console.log("signers: ", this.signers)
     // this.signers.map((sign) => console.log(sign.address))
   })
 
   it("should set correct state variables", async function() {
-    console.log("farm constructor: ", this.annex.address, this.dev.address, "1000", "0", "1000")
-    this.chef = await this.AnnexBoostFarm.deploy(this.annex.address, this.dev.address, "1000", "0", "1000")
+    this.chef = await this.AnnexBoostFarm.deploy(
+      this.annex.address,
+      this.boostToken.address,
+      this.dev.address,
+      "1000",
+      "1000",
+      "0",
+      "1000"
+    )
     await this.chef.deployed()
 
     // await this.annex.authorizeOwnershipTransfer(this.chef.address)
 
     const annex = await this.chef.annex()
+    const boostToken = await this.chef.boostFactor()
     const devaddr = await this.chef.devaddr()
     const owner = await this.annex.owner()
 
     expect(annex).to.equal(this.annex.address)
+    expect(boostToken).to.equal(this.boostToken.address)
     expect(devaddr).to.equal(this.dev.address)
     expect(owner).to.equal(this.annOwner.address)
   })
 
   it("should allow dev and only dev to update dev", async function() {
-    this.chef = await this.AnnexBoostFarm.deploy(this.annex.address, this.dev.address, "1000", "0", "1000")
+    this.chef = await this.AnnexBoostFarm.deploy(
+      this.annex.address,
+      this.boostToken.address,
+      this.dev.address,
+      "1000",
+      "1000",
+      "0",
+      "1000"
+    )
     await this.chef.deployed()
 
     expect(await this.chef.devaddr()).to.equal(this.dev.address)
@@ -82,7 +107,15 @@ describe("AnnexBoostFarm", function() {
 
     it("should allow emergency withdraw", async function() {
       // 100 per block farming rate starting at block 100 with bonus until block 1000
-      this.chef = await this.AnnexBoostFarm.deploy(this.annex.address, this.dev.address, "100", "100", "1000")
+      this.chef = await this.AnnexBoostFarm.deploy(
+        this.annex.address,
+        this.boostToken.address,
+        this.dev.address,
+        "100",
+        "100",
+        "100",
+        "1000"
+      )
       await this.chef.deployed()
 
       await this.chef.add("100", this.lp.address, true)
@@ -100,7 +133,15 @@ describe("AnnexBoostFarm", function() {
 
     it("should give out ANNs only after farming time", async function() {
       // 100 per block farming rate starting at block 100 with bonus until block 1000
-      this.chef = await this.AnnexBoostFarm.deploy(this.annex.address, this.dev.address, "100", "100", "1000")
+      this.chef = await this.AnnexBoostFarm.deploy(
+        this.annex.address,
+        this.boostToken.address,
+        this.dev.address,
+        "100",
+        "100",
+        "100",
+        "1000"
+      )
       await this.chef.deployed()
 
       this.annex.transfer(this.chef.address, "10000")
@@ -108,23 +149,24 @@ describe("AnnexBoostFarm", function() {
       // await this.annex.transferOwnership(this.chef.address)
 
       await this.chef.add("100", this.lp.address, true)
+      expect(await this.chef.totalAllocPoint()).to.equal("100")
 
       await this.lp.connect(this.bob).approve(this.chef.address, "1000", { from: this.bob.address })
-      await this.chef.connect(this.bob).deposit(0, "100", { from: this.bob.address })
+      await this.chef.connect(this.bob).deposit(0, 100, { from: this.bob.address })
       await time.advanceBlockTo("89")
-      await this.chef.connect(this.bob).deposit(0, "0", { from: this.bob.address }) // block 90
+      await this.chef.connect(this.bob).deposit(0, 0, { from: this.bob.address }) // block 90
       expect(await this.annex.balanceOf(this.bob.address)).to.equal("0")
       await time.advanceBlockTo("94")
 
-      await this.chef.connect(this.bob).deposit(0, "0", { from: this.bob.address }) // block 95
+      await this.chef.connect(this.bob).deposit(0, 0, { from: this.bob.address }) // block 95
       expect(await this.annex.balanceOf(this.bob.address)).to.equal("0")
       await time.advanceBlockTo("99")
 
-      await this.chef.connect(this.bob).deposit(0, "0", { from: this.bob.address }) // block 100
+      await this.chef.connect(this.bob).deposit(0, 0, { from: this.bob.address }) // block 100
       expect(await this.annex.balanceOf(this.bob.address)).to.equal("0")
       await time.advanceBlockTo("100")
 
-      await this.chef.connect(this.bob).deposit(0, "0", { from: this.bob.address }) // block 101
+      await this.chef.connect(this.bob).deposit(0, 0, { from: this.bob.address }) // block 101
       expect(await this.annex.balanceOf(this.bob.address)).to.equal("1000")
 
       await time.advanceBlockTo("104")
@@ -137,7 +179,15 @@ describe("AnnexBoostFarm", function() {
 
     it("should not distribute ANNs if no one deposit", async function() {
       // 100 per block farming rate starting at block 200 with bonus until block 1000
-      this.chef = await this.AnnexBoostFarm.deploy(this.annex.address, this.dev.address, "100", "200", "1000")
+      this.chef = await this.AnnexBoostFarm.deploy(
+        this.annex.address,
+        this.boostToken.address,
+        this.dev.address,
+        "100",
+        "100",
+        "200",
+        "1000"
+      )
       await this.chef.deployed()
 
       this.annex.transfer(this.chef.address, "10000")
@@ -165,7 +215,15 @@ describe("AnnexBoostFarm", function() {
 
     it("should distribute ANNs properly for each staker", async function() {
       // 100 per block farming rate starting at block 300 with bonus until block 1000
-      this.chef = await this.AnnexBoostFarm.deploy(this.annex.address, this.dev.address, "100", "300", "1000")
+      this.chef = await this.AnnexBoostFarm.deploy(
+        this.annex.address,
+        this.boostToken.address,
+        this.dev.address,
+        "100",
+        "100",
+        "300",
+        "1000"
+      )
       await this.chef.deployed()
 
       // Transfer 10,000 ANN to AnnexBoostFarm
@@ -237,7 +295,15 @@ describe("AnnexBoostFarm", function() {
 
     it("should give proper ANNs allocation to each pool", async function() {
       // 100 per block farming rate starting at block 400 with bonus until block 1000
-      this.chef = await this.AnnexBoostFarm.deploy(this.annex.address, this.dev.address, "100", "400", "1000")
+      this.chef = await this.AnnexBoostFarm.deploy(
+        this.annex.address,
+        this.boostToken.address,
+        this.dev.address,
+        "100",
+        "100",
+        "400",
+        "1000"
+      )
       // await this.annex.transferOwnership(this.chef.address)
       await this.lp.connect(this.alice).approve(this.chef.address, "1000", { from: this.alice.address })
       await this.lp2.connect(this.bob).approve(this.chef.address, "1000", { from: this.bob.address })
@@ -264,7 +330,15 @@ describe("AnnexBoostFarm", function() {
 
     it("should stop giving bonus ANNs after the bonus period ends", async function() {
       // 100 per block farming rate starting at block 500 with bonus until block 600
-      this.chef = await this.AnnexBoostFarm.deploy(this.annex.address, this.dev.address, "100", "500", "600")
+      this.chef = await this.AnnexBoostFarm.deploy(
+        this.annex.address,
+        this.boostToken.address,
+        this.dev.address,
+        "100",
+        "100",
+        "500",
+        "600"
+      )
 
       // Transfer 10,000 ANN to AnnexBoostFarm
       this.annex.transfer(this.chef.address, "100000")
@@ -287,7 +361,15 @@ describe("AnnexBoostFarm", function() {
 
     it("should give out ANNs only ANN single vault after farming time", async function() {
       // 100 per block farming rate starting at block 100 with bonus until block 1000
-      this.chef = await this.AnnexBoostFarm.deploy(this.annex.address, this.dev.address, "100", "700", "1000")
+      this.chef = await this.AnnexBoostFarm.deploy(
+        this.annex.address,
+        this.boostToken.address,
+        this.dev.address,
+        "100",
+        "100",
+        "700",
+        "1000"
+      )
       await this.chef.deployed()
       this.annex.transfer(this.chef.address, "20000")
 

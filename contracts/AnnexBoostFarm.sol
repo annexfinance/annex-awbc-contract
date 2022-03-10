@@ -117,7 +117,7 @@ contract AnnexBoostFarm is Ownable {
         uint256 lpSupply,
         uint256 allocPoint,
         uint256 lastRewardBlock,
-        uint accAnnexperShare,
+        uint accAnnexPerShare,
         uint totalValidBoostNum,
         uint totalValidBoostCount,
         uint accBoostAnnexPerShare
@@ -244,9 +244,11 @@ contract AnnexBoostFarm is Ownable {
                 multiplier.mul(boostAnnexPerBlock).mul(pool.allocPoint).div(
                     totalAllocPoint
                 );
-            accBoostAnnexPerShare = accBoostAnnexPerShare.add(
-                annexBoostReward.mul(1e12).div(pool.totalValidBoostNum - minimumValidBoostCount * pool.totalValidBoostCount)
-            );
+            if (pool.totalValidBoostNum - minimumValidBoostCount * pool.totalValidBoostCount > 0) {
+                accBoostAnnexPerShare = accBoostAnnexPerShare.add(
+                    annexBoostReward.mul(1e12).div(pool.totalValidBoostNum - minimumValidBoostCount * pool.totalValidBoostCount)
+                );
+            }
         }
         uint256 reward = user.amount.mul(accAnnexPerShare).div(1e12).sub(user.rewardDebt);
         uint256 validBoostFactors = getValidBoostFactors(user.boostFactors.length);
@@ -293,9 +295,11 @@ contract AnnexBoostFarm is Ownable {
             multiplier.mul(boostAnnexPerBlock).mul(pool.allocPoint).div(
                 totalAllocPoint
             );
-        pool.accBoostAnnexPerShare = pool.accBoostAnnexPerShare.add(
-            annexBoostReward.mul(1e12).div(pool.totalValidBoostNum - minimumValidBoostCount * pool.totalValidBoostCount)
-        );
+        if (pool.totalValidBoostNum - minimumValidBoostCount * pool.totalValidBoostCount > 0) {
+            pool.accBoostAnnexPerShare = pool.accBoostAnnexPerShare.add(
+                annexBoostReward.mul(1e12).div(pool.totalValidBoostNum - minimumValidBoostCount * pool.totalValidBoostCount)
+            );
+        }
         pool.lastRewardBlock = block.number;
     }
 
