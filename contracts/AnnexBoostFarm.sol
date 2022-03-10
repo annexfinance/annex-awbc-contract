@@ -438,22 +438,27 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         uint256 ownerTokenCount = boostFactor.balanceOf(msg.sender);
         require(tokenAmount <= ownerTokenCount);
 
-        for (uint256 i; i < tokenAmount; i++) {
-            uint _tokenId = boostFactor.tokenOfOwnerByIndex(msg.sender, i);
+        do {
+            tokenAmount--;
+            uint _tokenId = boostFactor.tokenOfOwnerByIndex(msg.sender, tokenAmount);
 
             _boost(_pid, _tokenId);
-        }
+        } while (tokenAmount > 0);
         _updateUserDebt(_pid, msg.sender);
     }
 
     function boostAll(uint _pid) external {
         _claimRewards(_pid, msg.sender);
         uint256 ownerTokenCount = boostFactor.balanceOf(msg.sender);
-        for (uint256 i; i < ownerTokenCount; i++) {
-            uint _tokenId = boostFactor.tokenOfOwnerByIndex(msg.sender, i);
+        require(ownerTokenCount > 0, "");
+
+        do {
+            uint _tokenId = boostFactor.tokenOfOwnerByIndex(msg.sender, ownerTokenCount - 1);
 
             _boost(_pid, _tokenId);
-        }
+            ownerTokenCount = boostFactor.balanceOf(msg.sender);
+        } while (ownerTokenCount > 0);
+
         _updateUserDebt(_pid, msg.sender);
     }
 
@@ -507,24 +512,28 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         uint256 ownerTokenCount = boostFactor.balanceOf(msg.sender);
         require(tokenAmount <= ownerTokenCount);
 
-        for (uint256 i; i < tokenAmount; i++) {
-            uint _tokenId = boostFactor.tokenOfOwnerByIndex(msg.sender, i);
-            checkOriginOwner(msg.sender, i);
+        do {
+            tokenAmount--;
+            uint _tokenId = boostFactor.tokenOfOwnerByIndex(msg.sender, tokenAmount);
+            checkOriginOwner(msg.sender, tokenAmount);
 
             _unBoost(_pid, _tokenId);
-        }
+        } while (tokenAmount > 0);
         _updateUserDebt(_pid, msg.sender);
     }
 
     function unBoostAll(uint _pid) external {
         _claimRewards(_pid, msg.sender);
         uint256 ownerTokenCount = boostFactor.balanceOf(msg.sender);
-        for (uint256 i; i < ownerTokenCount; i++) {
-            uint _tokenId = boostFactor.tokenOfOwnerByIndex(msg.sender, i);
-            checkOriginOwner(msg.sender, i);
+        require(ownerTokenCount > 0, "");
+
+        do {
+            uint _tokenId = boostFactor.tokenOfOwnerByIndex(msg.sender, ownerTokenCount - 1);
+            checkOriginOwner(msg.sender, ownerTokenCount - 1);
 
             _unBoost(_pid, _tokenId);
-        }
+            ownerTokenCount = boostFactor.balanceOf(msg.sender);
+        } while (ownerTokenCount > 0);
         _updateUserDebt(_pid, msg.sender);
     }
 

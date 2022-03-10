@@ -454,9 +454,45 @@ describe("AnnexBoostFarm", function() {
       await this.chef.connect(this.bob).deposit(0, "10", { from: this.bob.address })
       await this.chef.connect(this.bob).boost(0, 1, { from: this.bob.address })
       expect(await this.boostToken.balanceOf(this.bob.address)).to.equal("0")
-      
+
       await time.advanceBlockTo("3600")
       expect(await this.boostToken.getStakedTime(1)).to.be.above("0")
+    })
+
+    it("should be doubled reward when boosting", async function () {
+      // 10 per block farming rate starting at block 100 with bonus until block 1000
+      this.chef = await this.AnnexBoostFarm.deploy(
+        this.annex.address,
+        this.boostToken.address,
+        this.dev.address,
+        "10",
+        "10",
+        "5000",
+        "1000"
+      )
+      await this.chef.deployed()
+
+      // Transfer 10,000 ANN to AnnexBoostFarm
+      this.annex.transfer(this.chef.address, "100000")
+
+      await this.chef.add("100", this.lp.address, true)
+      expect(await this.chef.totalAllocPoint()).to.equal("100")
+
+      await this.boostToken.gift(4, this.bob.address)
+      await this.boostToken.setStakingAddress(this.chef.address)
+      await this.boostToken.connect(this.bob).setApprovalForAll(this.chef.address, true, { from: this.bob.address })
+      expect(await this.boostToken.balanceOf(this.bob.address)).to.equal("4")
+
+      await this.lp.connect(this.bob).approve(this.chef.address, "1000", { from: this.bob.address })
+      await this.chef.connect(this.bob).deposit(0, "10", { from: this.bob.address })
+      expect(await this.lp.balanceOf(this.chef.address)).to.equal("10")
+
+      await this.chef.connect(this.bob).boostAll(0, { from: this.bob.address })
+      expect(await this.boostToken.balanceOf(this.bob.address)).to.equal("0")
+
+      await time.advanceBlockTo("5010")
+      expect(await this.chef.pendingAnnex(0, this.bob.address)).to.equal("200")
+      // await this.chef.connect(this.bob).deposit(0, "0", { from: this.bob.address })
     })
   })
 })
