@@ -67,9 +67,9 @@ module.exports = {
   },
   networks: {
     hardhat: {
-      forking: {
-        url: "https://rinkeby.infura.io/v3/" + INFURA_ID,
-      },
+      // forking: {
+      //   url: "https://rinkeby.infura.io/v3/" + INFURA_ID,
+      // },
     },
     mainnet: {
       url: "https://mainnet.infura.io/v3/" + INFURA_ID,
@@ -110,13 +110,13 @@ module.exports = {
     clear: true,
     flat: true,
     spacing: 2,
-    only: ["AgencyWolfBillionaireClub"],
+    only: ["AgencyWolfBillionaireClub", "AnnexBoostFarm"],
   },
   mocha: {
     timeout: 0,
   },
   paths: {
-    deploy: "deploy/mainnet",
+    deploy: "deploy/bsc",
     sources: "./contracts",
   },
   etherscan: {

@@ -2,12 +2,12 @@
 
 pragma solidity 0.6.12;
 
-import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/EnumerableSet.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "./interfaces/IBoostToken.sol";
+import "./interfaces/IERC20.sol";
+import "./libraries/SafeERC20.sol";
+import "./libraries/EnumerableSet.sol";
+import "./libraries/SafeMath.sol";
+import "./libraries/Ownable.sol";
 
 // AnnexFarm is the master of Farm.
 //
@@ -16,7 +16,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 // distributed and the community can show to govern itself.
 //
 // Have fun reading it. Hopefully it's bug-free. God bless.
-contract AnnexFarm is Ownable {
+contract AnnexBoostFarm is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     // Info of each user.
@@ -70,7 +70,7 @@ contract AnnexFarm is Ownable {
     // Minimum vaild boost NFT count
     uint16 public minimumValidBoostCount = 3;
     // NFT contract for boosting
-    IERC721Enumerable public boostFactor;
+    IBoostToken public boostFactor;
     // Boosted with NFT or not
     mapping (uint256 => bool) public isBoosted;
     // boostFactor list per address
@@ -100,7 +100,7 @@ contract AnnexFarm is Ownable {
         uint256 _bonusEndBlock
     ) public {
         annex = _annex;
-        boostFactor = IERC721Enumerable(_boost);
+        boostFactor = IBoostToken(_boost);
         devaddr = _devaddr;
         annexPerBlock = _annexPerBlock;
         boostAnnexPerBlock = _boostAnnexPerBlock;
@@ -112,7 +112,16 @@ contract AnnexFarm is Ownable {
         return poolInfo.length;
     }
 
-    function getPoolInfo(uint _pid) external view returns (IERC20 lpToken, uint256 lpSupply, uint256 allocPoint, uint256 lastRewardBlock, uint accAnnexperShare) {
+    function getPoolInfo(uint _pid) external view returns (
+        IERC20 lpToken,
+        uint256 lpSupply,
+        uint256 allocPoint,
+        uint256 lastRewardBlock,
+        uint accAnnexperShare,
+        uint totalValidBoostNum,
+        uint totalValidBoostCount,
+        uint accBoostAnnexPerShare
+    ) {
         PoolInfo storage pool = poolInfo[_pid];
         uint256 amount;
         if (annex == address(pool.lpToken)) {
@@ -198,7 +207,7 @@ contract AnnexFarm is Ownable {
         }
     }
 
-    function getValidBoostFactors(uint256 userBoostFactors) internal returns (uint256) {
+    function getValidBoostFactors(uint256 userBoostFactors) internal view returns (uint256) {
         uint256 validBoostFactors = userBoostFactors > minimumValidBoostCount ? userBoostFactors - minimumValidBoostCount : 0;
 
         return validBoostFactors;
@@ -376,7 +385,7 @@ contract AnnexFarm is Ownable {
     }
 
     // Update reward token address by owner.
-    function dev(address _reward) public onlyOwner {
+    function updateRewardToken(address _reward) public onlyOwner {
         annex = _reward;
     }
 
@@ -423,7 +432,7 @@ contract AnnexFarm is Ownable {
         require(tokenAmount <= ownerTokenCount);
 
         for (uint256 i; i < tokenAmount; i++) {
-            uint _tokenId = boostFactor.tokenOfOwnerByIndex(_owner, i);
+            uint _tokenId = boostFactor.tokenOfOwnerByIndex(msg.sender, i);
 
             _boost(_pid, _tokenId);
         }
@@ -433,7 +442,7 @@ contract AnnexFarm is Ownable {
         _claimRewards(_pid, msg.sender);
         uint256 ownerTokenCount = boostFactor.balanceOf(msg.sender);
         for (uint256 i; i < ownerTokenCount; i++) {
-            uint _tokenId = boostFactor.tokenOfOwnerByIndex(_owner, i);
+            uint _tokenId = boostFactor.tokenOfOwnerByIndex(msg.sender, i);
 
             _boost(_pid, _tokenId);
         }
@@ -461,8 +470,9 @@ contract AnnexFarm is Ownable {
         for (uint i = index; i < length - 1; i++) {
             user.boostFactors[i] = user.boostFactors[i + 1];
         }
-        delete user.boostFactors[length - 1];
-        user.boostFactors.length--;
+        user.boostFactors.pop();
+        // delete user.boostFactors[length - 1];
+        // user.boostFactors.length--;
 
         PoolInfo storage pool = poolInfo[_pid];
         if (length > minimumValidBoostCount && user.boostFactors.length <= minimumValidBoostCount) {
@@ -482,25 +492,25 @@ contract AnnexFarm is Ownable {
     }
 
     function unBoostPartially(uint _pid, uint tokenAmount) external {
-        checkOriginOwner(msg.sender, _tokenId);
         _claimRewards(_pid, msg.sender);
 
         uint256 ownerTokenCount = boostFactor.balanceOf(msg.sender);
         require(tokenAmount <= ownerTokenCount);
 
         for (uint256 i; i < tokenAmount; i++) {
-            uint _tokenId = boostFactor.tokenOfOwnerByIndex(_owner, i);
+            uint _tokenId = boostFactor.tokenOfOwnerByIndex(msg.sender, i);
+            checkOriginOwner(msg.sender, i);
 
             _unBoost(_pid, _tokenId);
         }
     }
 
     function unBoostAll(uint _pid) external {
-        checkOriginOwner(msg.sender, _tokenId);
         _claimRewards(_pid, msg.sender);
         uint256 ownerTokenCount = boostFactor.balanceOf(msg.sender);
         for (uint256 i; i < ownerTokenCount; i++) {
-            uint _tokenId = boostFactor.tokenOfOwnerByIndex(_owner, i);
+            uint _tokenId = boostFactor.tokenOfOwnerByIndex(msg.sender, i);
+            checkOriginOwner(msg.sender, i);
 
             _unBoost(_pid, _tokenId);
         }
@@ -508,7 +518,7 @@ contract AnnexFarm is Ownable {
 
     function _claimRewards(uint256 _pid, address _user) internal {
         PoolInfo storage pool = poolInfo[_pid];
-        UserInfo storage user = userInfo[_pid][msg.sender];
+        UserInfo storage user = userInfo[_pid][_user];
         updatePool(_pid);
         uint256 validBoostFactors = getValidBoostFactors(user.boostFactors.length);
 
@@ -517,12 +527,12 @@ contract AnnexFarm is Ownable {
                 user.rewardDebt
             );
         uint256 boostPending = validBoostFactors.mul(pool.accBoostAnnexPerShare).div(1e12).sub(user.boostRewardDebt);
-        safeAnnexTransfer(msg.sender, pending.add(boostPending));
+        safeAnnexTransfer(_user, pending.add(boostPending));
         user.rewardDebt = user.amount.mul(pool.accAnnexPerShare).div(1e12);
         user.boostRewardDebt = validBoostFactors.mul(pool.accBoostAnnexPerShare).div(1e12);
     }
 
-    function checkOriginOwner(address sender, uint _tokenId) internal {
+    function checkOriginOwner(address sender, uint _tokenId) internal view {
         address originOwner = boostFactor.getTokenOwner(_tokenId);
 
         require(sender == originOwner);
@@ -530,9 +540,9 @@ contract AnnexFarm is Ownable {
 
     // Update boostFactor address. Can only be called by the owner.
     function setBoostFactor(
-        address _boost
+        address _address
     ) external onlyOwner {
-        boostFactor = IERC721Enumerable(_boost);
+        boostFactor = IBoostToken(_address);
     }
 
     // Update boostFactor address. Can only be called by the owner.
@@ -545,7 +555,7 @@ contract AnnexFarm is Ownable {
         uint256 ownerTokenCount = boostFactor.balanceOf(address(this));
 
         for (uint256 i; i < ownerTokenCount; i++) {
-            uint _tokenId = boostFactor.tokenOfOwnerByIndex(_owner, i);
+            uint _tokenId = boostFactor.tokenOfOwnerByIndex(address(this), i);
 
             boostFactor.safeTransferFrom(address(this), msg.sender, _tokenId);
         }

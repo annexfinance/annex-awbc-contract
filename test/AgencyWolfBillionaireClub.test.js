@@ -27,27 +27,28 @@ describe("AgencyWolfBillionaireClub", function () {
 
   it("Contract Deploy", async function () {
     const AgencyWolfBillionaireClub = await ethers.getContractFactory("AgencyWolfBillionaireClub");
-    info.agencyWolfBillionaireClub = await AgencyWolfBillionaireClub.deploy("AgencyWolfBillionaireClub", "AgencyWolfBillionaireClub");
+    info.agencyWolfBillionaireClub = await AgencyWolfBillionaireClub.deploy(
+      "AgencyWolfBillionaireClub",
+      "AWBC",
+      "https://nftassets.annex.finance/ipfs/QmeHoeon52U4HYuemkfuKtzxcSZV2xSW69rBeEKKPzav4G",
+      "0x79395B873119a42c3B9E4211FCEA9CC0358769Ed"
+    );
   });
 
-  it("Set Sale Status", async function () {
-    await info.agencyWolfBillionaireClub.setSaleStatus(true);
+  it("Set Sale Date", async function () {
+    await info.agencyWolfBillionaireClub.setPublicSaleDate(parseInt(Date.now() / 1000));
   });
 
   it("Start Sale Mint", async function () {
-    await expect(info.agencyWolfBillionaireClub.connect(info.minter1Signer).mint(info.minter1, 5, { value: info.mintFee(5) })).to.be.emit(
+    await expect(info.agencyWolfBillionaireClub.connect(info.deployerSigner).gift(1, info.minter1)).to.be.emit(
       info.agencyWolfBillionaireClub,
       "Transfer"
     );
 
     // can't mint bigger than max
-    await expect(info.agencyWolfBillionaireClub.connect(info.minter1Signer).mint(info.minter1, 11, { value: info.mintFee(11) })).to.be.reverted;
+    await expect(info.agencyWolfBillionaireClub.connect(info.minter1Signer).gift(1, info.minter1)).to.be.reverted;
 
-    await expect(info.agencyWolfBillionaireClub.connect(info.minter1Signer).mint(info.minter1, 5, { value: info.mintFee(5) })).to.be.emit(
-      info.agencyWolfBillionaireClub,
-      "Transfer"
-    );
     let totalSupply = await info.agencyWolfBillionaireClub.totalSupply();
-    expect(totalSupply.eq(10)).to.equal(true);
+    expect(totalSupply.eq(1)).to.equal(true);
   });
 });
