@@ -428,6 +428,7 @@ contract AnnexBoostFarm is Ownable {
     function boost(uint256 _pid, uint _tokenId) external {
         _claimRewards(_pid, msg.sender);
         _boost(_pid, _tokenId);
+        _updateUserDebt(_pid, msg.sender);
     }
 
     function boostPartially(uint _pid, uint tokenAmount) external {
@@ -440,6 +441,7 @@ contract AnnexBoostFarm is Ownable {
 
             _boost(_pid, _tokenId);
         }
+        _updateUserDebt(_pid, msg.sender);
     }
 
     function boostAll(uint _pid) external {
@@ -450,6 +452,7 @@ contract AnnexBoostFarm is Ownable {
 
             _boost(_pid, _tokenId);
         }
+        _updateUserDebt(_pid, msg.sender);
     }
 
     function _unBoost(uint _pid, uint _tokenId) internal {
@@ -493,6 +496,7 @@ contract AnnexBoostFarm is Ownable {
         checkOriginOwner(msg.sender, _tokenId);
         _claimRewards(_pid, msg.sender);
         _unBoost(_pid, _tokenId);
+        _updateUserDebt(_pid, msg.sender);
     }
 
     function unBoostPartially(uint _pid, uint tokenAmount) external {
@@ -507,6 +511,7 @@ contract AnnexBoostFarm is Ownable {
 
             _unBoost(_pid, _tokenId);
         }
+        _updateUserDebt(_pid, msg.sender);
     }
 
     function unBoostAll(uint _pid) external {
@@ -518,11 +523,13 @@ contract AnnexBoostFarm is Ownable {
 
             _unBoost(_pid, _tokenId);
         }
+        _updateUserDebt(_pid, msg.sender);
     }
 
     function _claimRewards(uint256 _pid, address _user) internal {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
+        require(user.amount > 0);
         updatePool(_pid);
         uint256 validBoostFactors = getValidBoostFactors(user.boostFactors.length);
 
@@ -532,6 +539,12 @@ contract AnnexBoostFarm is Ownable {
             );
         uint256 boostPending = validBoostFactors.mul(pool.accBoostAnnexPerShare).div(1e12).sub(user.boostRewardDebt);
         safeAnnexTransfer(_user, pending.add(boostPending));
+    }
+
+    function _updateUserDebt(uint256 _pid, address _user) internal {
+        PoolInfo storage pool = poolInfo[_pid];
+        UserInfo storage user = userInfo[_pid][_user];
+        uint256 validBoostFactors = getValidBoostFactors(user.boostFactors.length);
         user.rewardDebt = user.amount.mul(pool.accAnnexPerShare).div(1e12);
         user.boostRewardDebt = validBoostFactors.mul(pool.accBoostAnnexPerShare).div(1e12);
     }
