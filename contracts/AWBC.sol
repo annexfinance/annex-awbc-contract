@@ -93,13 +93,23 @@ contract AgencyWolfBillionaireClub is ERC721Enumerable, Ownable {
 	}
 
 	function updateStakeTime(uint256 tokenId, bool isStake) external {
-		require(msg.sender == stakingAddress);
+		require(msg.sender == stakingAddress, "");
 
 		if (isStake) {
 			stakeTime[tokenId] = block.timestamp;
 		} else {
 			stakedInTime[tokenId] = stakedInTime[tokenId] + block.timestamp - stakeTime[tokenId];
+            stakeTime[tokenId] = 0;
 		}
+	}
+
+    function getStakedTime(uint256 tokenId) external view returns (uint) {
+        uint stakedTime = stakedInTime[tokenId];
+		if (stakeTime[tokenId] > 0) {
+			stakedTime = stakedInTime[tokenId] + block.timestamp - stakeTime[tokenId];
+		}
+
+        return stakedTime;
 	}
 
 	function getTokenOwner(uint256 tokenId) external view returns (address) {

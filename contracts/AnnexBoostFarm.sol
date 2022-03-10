@@ -3,11 +3,13 @@
 pragma solidity 0.6.12;
 
 import "./interfaces/IBoostToken.sol";
+import "./interfaces/IERC721Receiver.sol";
 import "./interfaces/IERC20.sol";
 import "./libraries/SafeERC20.sol";
 import "./libraries/EnumerableSet.sol";
 import "./libraries/SafeMath.sol";
 import "./libraries/Ownable.sol";
+import "./libraries/ReentrancyGuard.sol";
 
 // AnnexFarm is the master of Farm.
 //
@@ -16,7 +18,7 @@ import "./libraries/Ownable.sol";
 // distributed and the community can show to govern itself.
 //
 // Have fun reading it. Hopefully it's bug-free. God bless.
-contract AnnexBoostFarm is Ownable {
+contract AnnexBoostFarm is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     // Info of each user.
@@ -332,7 +334,7 @@ contract AnnexBoostFarm is Ownable {
     }
 
     // Withdraw LP tokens from AnnexFarm.
-    function withdraw(uint256 _pid, uint256 _amount) external {
+    function withdraw(uint256 _pid, uint256 _amount) external nonReentrant {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.amount >= _amount, "withdraw: not good");
@@ -355,7 +357,7 @@ contract AnnexBoostFarm is Ownable {
     }
 
     // Withdraw without caring about rewards. EMERGENCY ONLY.
-    function emergencyWithdraw(uint256 _pid) public {
+    function emergencyWithdraw(uint256 _pid) external nonReentrant {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         pool.lpToken.safeTransfer(address(msg.sender), user.amount);
@@ -405,7 +407,7 @@ contract AnnexBoostFarm is Ownable {
     function _boost(uint256 _pid, uint _tokenId) internal {
         require (isBoosted[_tokenId] == false);
 
-        boostFactor.safeTransferFrom(msg.sender, address(this), _tokenId);
+        boostFactor.transferFrom(msg.sender, address(this), _tokenId);
         boostFactor.updateStakeTime(_tokenId, true);
 
         isBoosted[_tokenId] = true;
@@ -458,7 +460,7 @@ contract AnnexBoostFarm is Ownable {
     function _unBoost(uint _pid, uint _tokenId) internal {
         require (isBoosted[_tokenId] == true);
 
-        boostFactor.safeTransferFrom(address(this), msg.sender, _tokenId);
+        boostFactor.transferFrom(address(this), msg.sender, _tokenId);
         boostFactor.updateStakeTime(_tokenId, false);
 
         isBoosted[_tokenId] = false;
@@ -529,7 +531,7 @@ contract AnnexBoostFarm is Ownable {
     function _claimRewards(uint256 _pid, address _user) internal {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
-        require(user.amount > 0);
+        require(user.amount > 0, "No deposited lptokens");
         updatePool(_pid);
         uint256 validBoostFactors = getValidBoostFactors(user.boostFactors.length);
 
@@ -568,7 +570,7 @@ contract AnnexBoostFarm is Ownable {
     }
 
     // Withdraw NFTs which transferred unexpectedly
-    function emergencyNftWithdraw() external onlyOwner {
+    function emergencyNftWithdraw() external nonReentrant onlyOwner {
         uint256 ownerTokenCount = boostFactor.balanceOf(address(this));
 
         for (uint256 i; i < ownerTokenCount; i++) {

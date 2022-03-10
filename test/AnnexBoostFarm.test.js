@@ -425,5 +425,38 @@ describe("AnnexBoostFarm", function() {
 
       expect(await this.annex.totalSupply()).to.equal("1000000000000000000000000000")
     })
+
+    // Boosting test
+    it("should deposit lp before boosting", async function () {
+      // 100 per block farming rate starting at block 100 with bonus until block 1000
+      this.chef = await this.AnnexBoostFarm.deploy(
+        this.annex.address,
+        this.boostToken.address,
+        this.dev.address,
+        "100",
+        "100",
+        "100",
+        "1000"
+      )
+      await this.chef.deployed()
+
+      await this.chef.add("100", this.lp.address, true)
+      expect(await this.chef.totalAllocPoint()).to.equal("100")
+
+      await this.boostToken.gift(1, this.bob.address)
+      await this.boostToken.setStakingAddress(this.chef.address)
+      await this.boostToken.connect(this.bob).approve(this.chef.address, 1, { from: this.bob.address })
+      expect(await this.boostToken.balanceOf(this.bob.address)).to.equal("1")
+
+      await expect(this.chef.connect(this.bob).boost(0, 1, { from: this.bob.address })).to.be.revertedWith("No deposited lptokens")
+
+      await this.lp.connect(this.bob).approve(this.chef.address, "1000", { from: this.bob.address })
+      await this.chef.connect(this.bob).deposit(0, "10", { from: this.bob.address })
+      await this.chef.connect(this.bob).boost(0, 1, { from: this.bob.address })
+      expect(await this.boostToken.balanceOf(this.bob.address)).to.equal("0")
+      
+      await time.advanceBlockTo("3600")
+      expect(await this.boostToken.getStakedTime(1)).to.be.above("0")
+    })
   })
 })
