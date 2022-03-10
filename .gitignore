@@ -1,0 +1,18 @@
+node_modules
+
+#Hardhat files
+cache
+artifacts
+coverage
+
+.env
+.env.*
+!.env.template
+
+.vscode
+
+deployments/**/solcInputs
+
+.openzeppelin
+
+merge
