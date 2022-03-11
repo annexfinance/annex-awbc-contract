@@ -10,6 +10,7 @@ import "./libraries/EnumerableSet.sol";
 import "./libraries/SafeMath.sol";
 import "./libraries/Ownable.sol";
 import "./libraries/ReentrancyGuard.sol";
+import "hardhat/console.sol";
 
 // AnnexFarm is the master of Farm.
 //
@@ -255,6 +256,7 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         uint256 reward = user.amount.mul(accAnnexPerShare).div(1e12).sub(user.rewardDebt);
         uint256 validBoostFactors = getValidBoostFactors(user.boostFactors.length);
         uint256 boostReward = validBoostFactors.mul(accBoostAnnexPerShare).div(1e12).sub(user.boostRewardDebt);
+        console.log(reward);
         uint256 totalReward = reward.add(boostReward);
         return totalReward;
     }
@@ -475,7 +477,7 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         uint length = user.boostFactors.length;
         if (length > minimumValidBoostCount && length - 1 <= minimumValidBoostCount) {
             pool.totalValidBoostCount--;
-            pool.totalValidBoostNum = pool.totalValidBoostNum - (length - 1);
+            pool.totalValidBoostNum = pool.totalValidBoostNum - length;
         } else if (length - 1 > minimumValidBoostCount) {
             pool.totalValidBoostNum--;
         }
