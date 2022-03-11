@@ -471,69 +471,48 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         isBoosted[_tokenId] = false;
 
         UserInfo storage user = userInfo[_pid][msg.sender];
-        uint length = user.boostFactors.length;
-
-        uint index;
-        for (uint i = 0; i < length; i++) {
-            if (user.boostFactors[i] == _tokenId) {
-                index = i;
-                break;
-            }
-        }
-
-        for (uint i = index; i < length - 1; i++) {
-            user.boostFactors[i] = user.boostFactors[i + 1];
-        }
-        user.boostFactors.pop();
-        // delete user.boostFactors[length - 1];
-        // user.boostFactors.length--;
-
         PoolInfo storage pool = poolInfo[_pid];
-        if (length > minimumValidBoostCount && user.boostFactors.length <= minimumValidBoostCount) {
+        uint length = user.boostFactors.length;
+        if (length > minimumValidBoostCount && length - 1 <= minimumValidBoostCount) {
             pool.totalValidBoostCount--;
-            pool.totalValidBoostNum = pool.totalValidBoostNum - user.boostFactors.length;
-        } else if (user.boostFactors.length > minimumValidBoostCount) {
+            pool.totalValidBoostNum = pool.totalValidBoostNum - (length - 1);
+        } else if (length - 1 > minimumValidBoostCount) {
             pool.totalValidBoostNum--;
         }
 
         emit UnBoost(msg.sender, _pid, _tokenId);
     }
 
-    function unBoost(uint _pid, uint _tokenId) external {
-        checkOriginOwner(msg.sender, _tokenId);
-        _claimRewards(_pid, msg.sender);
-        _unBoost(_pid, _tokenId);
-        _updateUserDebt(_pid, msg.sender);
-    }
-
     function unBoostPartially(uint _pid, uint tokenAmount) external {
+        UserInfo storage user = userInfo[_pid][msg.sender];
+        require(user.boostFactors.length > 0, "");
+        require(tokenAmount <= user.boostFactors.length, "");
+
         _claimRewards(_pid, msg.sender);
 
-        uint256 ownerTokenCount = boostFactor.balanceOf(msg.sender);
-        require(tokenAmount <= ownerTokenCount);
-
-        do {
-            tokenAmount--;
-            uint _tokenId = boostFactor.tokenOfOwnerByIndex(msg.sender, tokenAmount);
-            checkOriginOwner(msg.sender, tokenAmount);
+        for (uint i; i < tokenAmount; i++) {
+            uint index = user.boostFactors.length - 1;
+            uint _tokenId = user.boostFactors[index];
 
             _unBoost(_pid, _tokenId);
-        } while (tokenAmount > 0);
+            user.boostFactors.pop();
+        }
         _updateUserDebt(_pid, msg.sender);
     }
 
     function unBoostAll(uint _pid) external {
+        UserInfo storage user = userInfo[_pid][msg.sender];
+        require(user.boostFactors.length > 0, "");
+
         _claimRewards(_pid, msg.sender);
-        uint256 ownerTokenCount = boostFactor.balanceOf(msg.sender);
-        require(ownerTokenCount > 0, "");
 
         do {
-            uint _tokenId = boostFactor.tokenOfOwnerByIndex(msg.sender, ownerTokenCount - 1);
-            checkOriginOwner(msg.sender, ownerTokenCount - 1);
+            uint index = user.boostFactors.length - 1;
+            uint _tokenId = user.boostFactors[index];
 
             _unBoost(_pid, _tokenId);
-            ownerTokenCount = boostFactor.balanceOf(msg.sender);
-        } while (ownerTokenCount > 0);
+            user.boostFactors.pop();
+        } while (user.boostFactors.length > 0);
         _updateUserDebt(_pid, msg.sender);
     }
 
@@ -560,10 +539,18 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         user.boostRewardDebt = validBoostFactors.mul(pool.accBoostAnnexPerShare).div(1e12);
     }
 
-    function checkOriginOwner(address sender, uint _tokenId) internal view {
-        address originOwner = boostFactor.getTokenOwner(_tokenId);
+    function checkOriginOwner(uint _pid, address _user, uint _tokenId) internal view returns (bool) {
+        UserInfo storage user = userInfo[_pid][_user];
 
-        require(sender == originOwner);
+        bool owner = false;
+        for (uint i; i < user.boostFactors.length; i++) {
+            if (_tokenId == user.boostFactors[i]) {
+                owner = true;
+                break;
+            }
+        }
+
+        return owner;
     }
 
     // Update boostFactor address. Can only be called by the owner.

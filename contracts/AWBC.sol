@@ -4,6 +4,7 @@ pragma solidity >=0.7.0 <0.9.0;
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+// import "hardhat/console.sol";
 
 contract AgencyWolfBillionaireClub is ERC721Enumerable, Ownable {
 	using Strings for uint256;
@@ -20,7 +21,6 @@ contract AgencyWolfBillionaireClub is ERC721Enumerable, Ownable {
 	bool public revealed = false;
 	mapping(address => bool) whitelistedAddresses;
 	mapping(address => uint256) public addressMintedBalance;
-	mapping(uint256 => address) public tokenOwner;
 	mapping(uint256 => uint256) public stakedInTime;
 	mapping(uint256 => uint256) public stakeTime;
 
@@ -110,22 +110,6 @@ contract AgencyWolfBillionaireClub is ERC721Enumerable, Ownable {
 		}
 
         return stakedTime;
-	}
-
-	function getTokenOwner(uint256 tokenId) external view returns (address) {
-		return tokenOwner[tokenId];
-	}
-
-	function _transfer(
-		address from,
-		address to,
-		uint256 tokenId
-	) internal override {
-		if (to != stakingAddress && to != tokenOwner[tokenId]) {
-			tokenOwner[tokenId] = to;
-		}
-
-		super._transfer(from, to, tokenId);
 	}
 
 	//PUBLIC VIEWS
