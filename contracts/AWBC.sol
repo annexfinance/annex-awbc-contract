@@ -117,6 +117,17 @@ contract AgencyWolfBillionaireClub is ERC721Enumerable, Ownable {
 		return whitelistedAddresses[_user];
 	}
 
+
+	function getSaleStarted() public view returns (bool) {
+		return block.timestamp >= publicSaleDate && !paused;
+	}
+
+	function getUserMints(address _owner) public view returns (uint256) {
+		uint256 ownerTokenCount = balanceOf(_owner);
+
+		return ownerTokenCount;
+	}
+
 	function walletOfOwner(address _owner) public view returns (uint256[] memory) {
 		uint256 ownerTokenCount = balanceOf(_owner);
 		uint256[] memory tokenIds = new uint256[](ownerTokenCount);
@@ -204,7 +215,7 @@ contract AgencyWolfBillionaireClub is ERC721Enumerable, Ownable {
 		}
 	}
 
-	function withdraw() public payable onlyOwner {
+	function withdraw() public onlyOwner {
 		uint256 balance = paymentsToken.balanceOf(address(this));
 		require(balance > 0);
 		paymentsToken.transfer(msg.sender, balance);
