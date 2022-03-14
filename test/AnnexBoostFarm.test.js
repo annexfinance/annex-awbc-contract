@@ -14,7 +14,7 @@ describe("AnnexBoostFarm", function() {
     this.vaulter = this.signers[6]
 
     this.AnnexBoostFarm = await ethers.getContractFactory("AnnexBoostFarm")
-    this.BoostToken = await ethers.getContractFactory("AgencyWolfBillionaireClub")
+    this.BoostToken = await ethers.getContractFactory("AnnexWolfNFT")
     this.ANNToken = await ethers.getContractFactory("ANN")
     this.ERC20Mock = await ethers.getContractFactory("ERC20Mock", this.minter)
   })
@@ -23,8 +23,8 @@ describe("AnnexBoostFarm", function() {
     this.annex = await this.ANNToken.deploy(this.annOwner.address)
     await this.annex.deployed()
     this.boostToken = await this.BoostToken.deploy(
-      "AgencyWolfBillionaireClub",
-      "AWBC",
+      "AnnexWolfBFT",
+      "AWN",
       "https://nftassets.annex.finance/ipfs/QmeHoeon52U4HYuemkfuKtzxcSZV2xSW69rBeEKKPzav4G",
       this.annex.address
     )

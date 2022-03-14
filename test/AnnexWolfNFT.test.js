@@ -5,7 +5,7 @@ function fromWei(number, decimals = 18) {
   return web3.utils.fromWei(number.toString() + new Array(18 - decimals).fill(0).join(""));
 }
 
-describe("AgencyWolfBillionaireClub", function () {
+describe("AnnexWolfNFT", function () {
   const info = {
     mintPrice: web3.utils.toWei("0.04"),
     mintFee: (amount = 1) => web3.utils.toWei((0.04 * amount).toString()),
@@ -26,9 +26,9 @@ describe("AgencyWolfBillionaireClub", function () {
   });
 
   it("Contract Deploy", async function () {
-    const AgencyWolfBillionaireClub = await ethers.getContractFactory("AgencyWolfBillionaireClub");
-    info.agencyWolfBillionaireClub = await AgencyWolfBillionaireClub.deploy(
-      "AgencyWolfBillionaireClub",
+    const AnnexWolfNFT = await ethers.getContractFactory("AnnexWolfNFT");
+    info.annexWolfNFT = await AnnexWolfNFT.deploy(
+      "AnnexWolfNFT",
       "AWBC",
       "https://nftassets.annex.finance/ipfs/QmeHoeon52U4HYuemkfuKtzxcSZV2xSW69rBeEKKPzav4G",
       "0x79395B873119a42c3B9E4211FCEA9CC0358769Ed"
@@ -36,19 +36,19 @@ describe("AgencyWolfBillionaireClub", function () {
   });
 
   it("Set Sale Date", async function () {
-    await info.agencyWolfBillionaireClub.setPublicSaleDate(parseInt(Date.now() / 1000));
+    await info.annexWolfNFT.setPublicSaleDate(parseInt(Date.now() / 1000));
   });
 
   it("Start Sale Mint", async function () {
-    await expect(info.agencyWolfBillionaireClub.connect(info.deployerSigner).gift(1, info.minter1)).to.be.emit(
-      info.agencyWolfBillionaireClub,
+    await expect(info.annexWolfNFT.connect(info.deployerSigner).gift(1, info.minter1)).to.be.emit(
+      info.annexWolfNFT,
       "Transfer"
     );
 
     // can't mint bigger than max
-    await expect(info.agencyWolfBillionaireClub.connect(info.minter1Signer).gift(1, info.minter1)).to.be.reverted;
+    await expect(info.annexWolfNFT.connect(info.minter1Signer).gift(1, info.minter1)).to.be.reverted;
 
-    let totalSupply = await info.agencyWolfBillionaireClub.totalSupply();
+    let totalSupply = await info.annexWolfNFT.totalSupply();
     expect(totalSupply.eq(1)).to.equal(true);
   });
 });
