@@ -426,7 +426,7 @@ describe("AnnexBoostFarm", function() {
       expect(await this.annex.totalSupply()).to.equal("1000000000000000000000000000")
     })
 
-    Boosting test
+    // Boosting test
     it("should deposit lp before boosting", async function () {
       // 100 per block farming rate starting at block 100 with bonus until block 1000
       this.chef = await this.AnnexBoostFarm.deploy(
