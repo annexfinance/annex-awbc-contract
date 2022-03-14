@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 // import "hardhat/console.sol";
 
-contract AgencyWolfBillionaireClub is ERC721Enumerable, Ownable {
+contract AnnexWolfNFT is ERC721Enumerable, Ownable {
 	using Strings for uint256;
 	string private baseURI;
 	string public baseExtension = ".json";
