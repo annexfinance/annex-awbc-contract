@@ -90,7 +90,12 @@ module.exports = {
       url: "https://data-seed-prebsc-1-s1.binance.org:8545",
       accounts: [`${PRIVATE_KEY}`],
       deploy: ["deploy/bsctest"],
-    }
+    },
+    cronos: {
+      url: "https://evm-cronos.crypto.org",
+      accounts: [`${PRIVATE_KEY}`],
+      deploy: ["deploy/cronos"],
+    },
   },
   namedAccounts: {
     deployer: 0,
@@ -110,7 +115,7 @@ module.exports = {
     clear: true,
     flat: true,
     spacing: 2,
-    only: ["AgencyWolfBillionaireClub", "AnnexBoostFarm"],
+    only: ["AnnexIronWolf", "AnnexBoostFarm"],
   },
   mocha: {
     timeout: 0,
