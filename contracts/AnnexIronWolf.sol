@@ -4,9 +4,8 @@ pragma solidity >=0.7.0 <0.9.0;
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-// import "hardhat/console.sol";
 
-contract AnnexWolfNFT is ERC721Enumerable, Ownable {
+contract AnnexIronWolf is ERC721Enumerable, Ownable {
 	using Strings for uint256;
 	string private baseURI;
 	string public baseExtension = ".json";

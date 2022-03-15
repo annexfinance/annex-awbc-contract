@@ -5,7 +5,7 @@ function fromWei(number, decimals = 18) {
   return web3.utils.fromWei(number.toString() + new Array(18 - decimals).fill(0).join(""));
 }
 
-describe("AnnexWolfNFT", function () {
+describe("AnnexIronWolf", function () {
   const info = {
     mintPrice: web3.utils.toWei("0.04"),
     mintFee: (amount = 1) => web3.utils.toWei((0.04 * amount).toString()),
@@ -26,29 +26,29 @@ describe("AnnexWolfNFT", function () {
   });
 
   it("Contract Deploy", async function () {
-    const AnnexWolfNFT = await ethers.getContractFactory("AnnexWolfNFT");
-    info.annexWolfNFT = await AnnexWolfNFT.deploy(
-      "AnnexWolfNFT",
-      "AWBC",
+    const AnnexIronWolf = await ethers.getContractFactory("AnnexIronWolf");
+    info.annexIronWolf = await AnnexIronWolf.deploy(
+      "AnnexIronWolf",
+      "AIW",
       "https://nftassets.annex.finance/ipfs/QmeHoeon52U4HYuemkfuKtzxcSZV2xSW69rBeEKKPzav4G",
       "0x79395B873119a42c3B9E4211FCEA9CC0358769Ed"
     );
   });
 
   it("Set Sale Date", async function () {
-    await info.annexWolfNFT.setPublicSaleDate(parseInt(Date.now() / 1000));
+    await info.annexIronWolf.setPublicSaleDate(parseInt(Date.now() / 1000));
   });
 
   it("Start Sale Mint", async function () {
-    await expect(info.annexWolfNFT.connect(info.deployerSigner).gift(1, info.minter1)).to.be.emit(
-      info.annexWolfNFT,
+    await expect(info.annexIronWolf.connect(info.deployerSigner).gift(1, info.minter1)).to.be.emit(
+      info.annexIronWolf,
       "Transfer"
     );
 
     // can't mint bigger than max
-    await expect(info.annexWolfNFT.connect(info.minter1Signer).gift(1, info.minter1)).to.be.reverted;
+    await expect(info.annexIronWolf.connect(info.minter1Signer).gift(1, info.minter1)).to.be.reverted;
 
-    let totalSupply = await info.annexWolfNFT.totalSupply();
+    let totalSupply = await info.annexIronWolf.totalSupply();
     expect(totalSupply.eq(1)).to.equal(true);
   });
 });
