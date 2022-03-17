@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node_version: ['12']
+        node_version: ['14']
         os: [ubuntu-latest]
 
     steps:
@@ -31,7 +31,6 @@ jobs:
         node-version: ${{ matrix.node_version }}
     - run: npm install -g yarn
     - run: yarn --frozen-lockfile
-    - name: yarn lint and test
+    - name: yarn test
       run: |
-        yarn run lint --if-present
         yarn run test --if-present
