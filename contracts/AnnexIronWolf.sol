@@ -15,6 +15,7 @@ contract AnnexIronWolf is ERC721Enumerable, Ownable {
 	uint256 public maxMintAmount = 20;
 	uint256 public nftPerAddressLimit = 100;
 	uint256 public publicSaleDate = 1647874800;
+	uint256 public stopPoint = 2000;
 	address public stakingAddress;
 	bool public paused = false;
 	bool public revealed = false;
@@ -70,7 +71,7 @@ contract AnnexIronWolf is ERC721Enumerable, Ownable {
 		//Do some validations depending on which step of the sale we are in
 		publicsaleValidations(ownerMintedCount, _mintAmount);
 
-		require(supply + _mintAmount <= maxSupply, "max NFT limit exceeded");
+		require(supply + _mintAmount <= stopPoint, "saled NFT limit exceeded");
 
 		paymentsToken.transferFrom(msg.sender, address(this), cost * _mintAmount);
 
@@ -200,12 +201,13 @@ contract AnnexIronWolf is ERC721Enumerable, Ownable {
 		notRevealedUri = _notRevealedURI;
 	}
 
-	function setMaxSupply(uint256 _maxSupply) public onlyOwner {
-		maxSupply = _maxSupply;
-	}
-
 	function setPublicSaleDate(uint256 _publicSaleDate) public onlyOwner {
 		publicSaleDate = _publicSaleDate;
+	}
+
+	function setStopPoint(uint256 _point) public onlyOwner {
+		require(_point <= maxSupply, "can not be exceed max supply");
+		stopPoint = _point;
 	}
 
 	function whitelistUsers(address[] memory addresses) public onlyOwner {
