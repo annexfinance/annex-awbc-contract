@@ -11,10 +11,10 @@ contract AnnexIronWolf is ERC721Enumerable, Ownable {
 	string public baseExtension = ".json";
 	string public notRevealedUri;
 	uint256 public cost = 100000 ether;
-	uint256 public maxSupply = 10000;
+	uint256 public maxSupply = 2000;
 	uint256 public maxMintAmount = 20;
 	uint256 public nftPerAddressLimit = 100;
-	uint256 public publicSaleDate = 1635814800;
+	uint256 public publicSaleDate = 1647874800;
 	address public stakingAddress;
 	bool public paused = false;
 	bool public revealed = false;
