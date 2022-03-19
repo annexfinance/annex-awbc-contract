@@ -9,6 +9,7 @@ coverage
 .env.*
 !.env.template
 
+.deps
 .vscode
 
 deployments/**/solcInputs

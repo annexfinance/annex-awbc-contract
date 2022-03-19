@@ -10,11 +10,11 @@ contract AnnexIronWolf is ERC721Enumerable, Ownable {
 	string private baseURI;
 	string public baseExtension = ".json";
 	string public notRevealedUri;
-	uint256 public cost = 100000 ether;
+	uint256 public cost = 150000 ether; // 150k ANN
 	uint256 public maxSupply = 2000;
 	uint256 public maxMintAmount = 20;
 	uint256 public nftPerAddressLimit = 100;
-	uint256 public publicSaleDate = 1647874800;
+	uint256 public publicSaleDate = 1647874800; // 2022-03-21 15:00:00 PM UTC
 	uint256 public stopPoint = 2000;
 	address public stakingAddress;
 	bool public paused = false;
@@ -123,9 +123,7 @@ contract AnnexIronWolf is ERC721Enumerable, Ownable {
 	}
 
 	function getUserMints(address _owner) public view returns (uint256) {
-		uint256 ownerTokenCount = balanceOf(_owner);
-
-		return ownerTokenCount;
+		return addressMintedBalance[_owner];
 	}
 
 	function walletOfOwner(address _owner) public view returns (uint256[] memory) {
@@ -161,7 +159,7 @@ contract AnnexIronWolf is ERC721Enumerable, Ownable {
 	}
 
 	function getContractBalance() public view onlyOwner returns (uint256) {
-		return address(this).balance;
+		return paymentsToken.balanceOf(address(this));
 	}
 
 	//ONLY OWNER SETTERS
