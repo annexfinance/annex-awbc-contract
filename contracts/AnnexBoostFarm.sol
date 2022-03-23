@@ -10,6 +10,7 @@ import "./libraries/EnumerableSet.sol";
 import "./libraries/SafeMath.sol";
 import "./libraries/Ownable.sol";
 import "./libraries/ReentrancyGuard.sol";
+import "hardhat/console.sol";
 
 // AnnexFarm is the master of Farm.
 //
@@ -41,6 +42,7 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         uint256[] boostFactors;
         uint256 boostRewardDebt; // Boost Reward debt. See explanation below.
         uint256 boostedDate; // Latest boosted date
+        uint256 accBoostReward;
     }
     // Info of each pool.
     struct PoolInfo {
@@ -48,9 +50,8 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         uint256 allocPoint; // How many allocation points assigned to this pool. ANNs to distribute per block.
         uint256 lastRewardBlock; // Last block number that ANNs distribution occurs.
         uint256 accRewardPerShare; // Accumulated ANNs per share, times 1e12. See below.
-        uint256 totalValidBoostNum; // Total valid boosted factor count.
-        uint256 totalValidBoostCount; // Total valid boosted accounts count.
-        uint256 accBoostRewardPerShare; // Accumulated ANNs per share,.
+        uint256 totalBoostCount; // Total valid boosted accounts count.
+        uint256 rewardEligibleSupply; // total LP supply of users which staked boost token.
     }
     // The Annex TOKEN!
     address public annex;
@@ -69,12 +70,12 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
     // Info of each user that stakes LP tokens.
     mapping(uint256 => mapping(address => UserInfo)) public userInfo;
     // claimable time limit for base reward
-    uint256 public claimRewardTime = 86400;
+    uint256 public claimBaseRewardTime = 86400;
     uint256 public unstakableTime = 172800;
+    uint256 public initialBoostMultiplier = 40;
+    uint256 public boostMultiplierFactor = 20;
 
     // Boosting Part
-    // ANN tokens distribution for boosting per block.
-    uint256 public boostRewardPerBlock;
     // Minimum vaild boost NFT count
     uint16 public minimumValidBoostCount = 1;
     // Maximum boost NFT count
@@ -104,10 +105,9 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
 
     constructor(
         address _annex,
-        address _rewardToken
+        address _rewardToken,
         address _boost,
         uint256 _rewardPerBlock,
-        uint256 _boostRewardPerBlock,
         uint256 _startBlock,
         uint256 _bonusEndBlock
     ) public {
@@ -115,7 +115,6 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         rewardToken = _rewardToken;
         boostFactor = IBoostToken(_boost);
         rewardPerBlock = _rewardPerBlock;
-        boostRewardPerBlock = _boostRewardPerBlock;
         bonusEndBlock = _bonusEndBlock;
         startBlock = _startBlock;
     }
@@ -130,9 +129,8 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         uint256 allocPoint,
         uint256 lastRewardBlock,
         uint accRewardPerShare,
-        uint totalValidBoostNum,
-        uint totalValidBoostCount,
-        uint accBoostRewardPerShare
+        uint totalBoostCount,
+        uint256 rewardEligibleSupply
     ) {
         PoolInfo storage pool = poolInfo[_pid];
         uint256 amount;
@@ -147,9 +145,8 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
             pool.allocPoint,
             pool.lastRewardBlock,
             pool.accRewardPerShare,
-            pool.totalValidBoostNum,
-            pool.totalValidBoostCount,
-            pool.accBoostRewardPerShare
+            pool.totalBoostCount,
+            pool.rewardEligibleSupply
         );
     }
 
@@ -172,9 +169,8 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
                 allocPoint: _allocPoint,
                 lastRewardBlock: lastRewardBlock,
                 accRewardPerShare: 0,
-                accBoostRewardPerShare: 0,
-                totalValidBoostNum: 0,
-                totalValidBoostCount: 0
+                totalBoostCount: 0,
+                rewardEligibleSupply: 0
             })
         );
     }
@@ -225,6 +221,15 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         return validBoostFactors;
     }
 
+    function getBoostMultiplier(uint256 boostFactorCount) internal view returns (uint256) {
+        if (boostFactorCount <= minimumValidBoostCount) {
+            return 0;
+        }
+        uint256 initBoostCount = boostFactorCount.sub(minimumValidBoostCount).add(1);
+
+        return initBoostCount.mul(boostMultiplierFactor).div(100).add(initialBoostMultiplier.div(100));
+    }
+
     // View function to see pending ANNs on frontend.
     function pendingReward(uint256 _pid, address _user)
         external
@@ -234,14 +239,8 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
         uint256 accRewardPerShare = pool.accRewardPerShare;
-        uint256 accBoostRewardPerShare = pool.accBoostRewardPerShare;
-        uint256 lpSupply;
-        if (annex == address(pool.lpToken)) {
-            lpSupply = lpSupplyOfAnnPool;
-        } else {
-            lpSupply = pool.lpToken.balanceOf(address(this));
-        }
-        if (block.number > pool.lastRewardBlock && lpSupply != 0) {
+
+        if (block.number > pool.lastRewardBlock && pool.rewardEligibleSupply > 0) {
             uint256 multiplier =
                 getMultiplier(pool.lastRewardBlock, block.number);
             uint256 reward =
@@ -249,28 +248,17 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
                     totalAllocPoint
                 );
             accRewardPerShare = accRewardPerShare.add(
-                reward.mul(1e12).div(lpSupply)
+                reward.mul(1e12).div(pool.rewardEligibleSupply)
             );
-
-            uint256 boostReward =
-                multiplier.mul(boostRewardPerBlock).mul(pool.allocPoint).div(
-                    totalAllocPoint
-                );
-            if (pool.totalValidBoostNum - minimumValidBoostCount * pool.totalValidBoostCount > 0) {
-                accBoostRewardPerShare = accBoostRewardPerShare.add(
-                    boostReward.mul(1e12).div(pool.totalValidBoostNum - minimumValidBoostCount * pool.totalValidBoostCount)
-                );
-            }
         }
-        uint256 reward = user.amount.mul(accRewardPerShare).div(1e12).sub(user.rewardDebt);
-        uint256 validBoostFactors = getValidBoostFactors(user.boostFactors.length);
-        uint256 boostReward = validBoostFactors.mul(accBoostRewardPerShare).div(1e12).sub(user.boostRewardDebt);
-        uint256 totalReward = reward.add(boostReward);
-        return totalReward;
+        uint256 boostMultiplier = getBoostMultiplier(user.boostFactors.length);
+        uint256 baseReward = user.amount.mul(accRewardPerShare).div(1e12).sub(user.rewardDebt);
+        uint256 boostReward = boostMultiplier.mul(baseReward).add(user.accBoostReward).sub(user.boostRewardDebt);
+        return baseReward.add(boostReward);
     }
 
     // View function to see pending ANNs on frontend.
-    function pendingDepositedReward(uint256 _pid, address _user)
+    function pendingBaseReward(uint256 _pid, address _user)
         external
         view
         returns (uint256)
@@ -278,13 +266,8 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
         uint256 accRewardPerShare = pool.accRewardPerShare;
-        uint256 lpSupply;
-        if (annex == address(pool.lpToken)) {
-            lpSupply = lpSupplyOfAnnPool;
-        } else {
-            lpSupply = pool.lpToken.balanceOf(address(this));
-        }
-        if (block.number > pool.lastRewardBlock && lpSupply != 0) {
+
+        if (block.number > pool.lastRewardBlock && pool.rewardEligibleSupply > 0) {
             uint256 multiplier =
                 getMultiplier(pool.lastRewardBlock, block.number);
             uint256 reward =
@@ -292,44 +275,11 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
                     totalAllocPoint
                 );
             accRewardPerShare = accRewardPerShare.add(
-                reward.mul(1e12).div(lpSupply)
+                reward.mul(1e12).div(pool.rewardEligibleSupply)
             );
         }
 
         return user.amount.mul(accRewardPerShare).div(1e12).sub(user.rewardDebt);
-    }
-
-    // View function to see pending ANNs on frontend.
-    function pendingBoostingReward(uint256 _pid, address _user)
-        external
-        view
-        returns (uint256)
-    {
-        PoolInfo storage pool = poolInfo[_pid];
-        UserInfo storage user = userInfo[_pid][_user];
-        uint256 accBoostRewardPerShare = pool.accBoostRewardPerShare;
-        uint256 lpSupply;
-        if (annex == address(pool.lpToken)) {
-            lpSupply = lpSupplyOfAnnPool;
-        } else {
-            lpSupply = pool.lpToken.balanceOf(address(this));
-        }
-        if (block.number > pool.lastRewardBlock && lpSupply != 0) {
-            uint256 multiplier =
-                getMultiplier(pool.lastRewardBlock, block.number);
-
-            uint256 boostReward =
-                multiplier.mul(boostRewardPerBlock).mul(pool.allocPoint).div(
-                    totalAllocPoint
-                );
-            if (pool.totalValidBoostNum - minimumValidBoostCount * pool.totalValidBoostCount > 0) {
-                accBoostRewardPerShare = accBoostRewardPerShare.add(
-                    boostReward.mul(1e12).div(pool.totalValidBoostNum - minimumValidBoostCount * pool.totalValidBoostCount)
-                );
-            }
-        }
-        uint256 validBoostFactors = getValidBoostFactors(user.boostFactors.length);
-        return validBoostFactors.mul(accBoostRewardPerShare).div(1e12).sub(user.boostRewardDebt);
     }
 
     // Update reward vairables for all pools. Be careful of gas spending!
@@ -346,13 +296,8 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         if (block.number <= pool.lastRewardBlock) {
             return;
         }
-        uint256 lpSupply;
-        if (annex == address(pool.lpToken)) {
-            lpSupply = lpSupplyOfAnnPool;
-        } else {
-            lpSupply = pool.lpToken.balanceOf(address(this));
-        }
-        if (lpSupply == 0 || pool.totalValidBoostCount == 0) {
+
+        if (pool.rewardEligibleSupply == 0) {
             pool.lastRewardBlock = block.number;
             return;
         }
@@ -362,23 +307,13 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
                 totalAllocPoint
             );
         pool.accRewardPerShare = pool.accRewardPerShare.add(
-            reward.mul(1e12).div(lpSupply)
+            reward.mul(1e12).div(pool.rewardEligibleSupply)
         );
-
-        uint256 boostReward =
-            multiplier.mul(boostRewardPerBlock).mul(pool.allocPoint).div(
-                totalAllocPoint
-            );
-        if (pool.totalValidBoostNum - minimumValidBoostCount * pool.totalValidBoostCount > 0) {
-            pool.accBoostRewardPerShare = pool.accBoostRewardPerShare.add(
-                boostReward.mul(1e12).div(pool.totalValidBoostNum - minimumValidBoostCount * pool.totalValidBoostCount)
-            );
-        }
         pool.lastRewardBlock = block.number;
     }
 
     // Check the eligible user or not for reward
-    function checkRewardEligible(uint boost) internal returns(bool) {
+    function checkRewardEligible(uint boost) internal view returns(bool) {
         if (boost >= minimumValidBoostCount) {
             return true;
         }
@@ -387,8 +322,8 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
     }
 
     // Check claim eligible
-    function checkRewardClaimEligible(uint depositedTime) internal returns(bool) {
-        if (block.timestamp - depositedTime > claimRewardTime) {
+    function checkRewardClaimEligible(uint depositedTime) internal view returns(bool) {
+        if (block.timestamp - depositedTime > claimBaseRewardTime) {
             return true;
         }
 
@@ -396,19 +331,43 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
     }
 
     // Claim base lp reward
-    function claimBaseReward(uint256 _pid) internal {
+    function _claimBaseRewards(uint256 _pid, address _user) internal {
         PoolInfo storage pool = poolInfo[_pid];
-        UserInfo storage user = userInfo[_pid][msg.sender];
-        updatePool(_pid);
+        UserInfo storage user = userInfo[_pid][_user];
         bool claimEligible = checkRewardClaimEligible(user.depositedDate);
-
-        if (user.amount > 0 && claimEligible) {
-            uint256 pending =
-                user.amount.mul(pool.accRewardPerShare).div(1e12).sub(
-                    user.rewardDebt
+        if (claimEligible) {
+            uint256 accRewardPerShare = pool.accRewardPerShare;
+            // uint256 lpSupply;
+            // if (annex == address(pool.lpToken)) {
+            //     lpSupply = lpSupplyOfAnnPool;
+            // } else {
+            //     lpSupply = pool.lpToken.balanceOf(address(this));
+            // }
+            if (pool.rewardEligibleSupply > 0) {
+                uint256 multiplier =
+                    getMultiplier(pool.lastRewardBlock, block.number);
+                uint256 reward =
+                    multiplier.mul(rewardPerBlock).mul(pool.allocPoint).div(
+                        totalAllocPoint
+                    );
+                accRewardPerShare = accRewardPerShare.add(
+                    reward.mul(1e12).div(pool.rewardEligibleSupply)
                 );
-            safeRewardTransfer(msg.sender, pending);
+            }
+            uint256 boostMultiplier = getBoostMultiplier(user.boostFactors.length);
+            uint256 baseReward = user.amount.mul(accRewardPerShare).div(1e12).sub(user.rewardDebt);
+            uint256 boostReward = boostMultiplier.mul(baseReward);
+            user.accBoostReward = user.accBoostReward.add(boostReward);
+
+            safeRewardTransfer(_user, baseReward);
+            user.rewardDebt = user.amount.mul(pool.accRewardPerShare).div(1e12);
+            user.depositedDate = block.timestamp;
         }
+    }
+
+    function claimBaseRewards(uint256 _pid) external {
+        updatePool(_pid);
+        _claimBaseRewards(_pid, msg.sender);
     }
 
     // Deposit LP tokens to Annexswap for ANN allocation.
@@ -417,13 +376,12 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         UserInfo storage user = userInfo[_pid][msg.sender];
         updatePool(_pid);
         bool claimEligible = checkRewardClaimEligible(user.depositedDate);
-        if (user.amount > 0 && claimEligible) {
-            uint256 pending =
-                user.amount.mul(pool.accRewardPerShare).div(1e12).sub(
-                    user.rewardDebt
-                );
-            safeRewardTransfer(msg.sender, pending);
+        bool rewardEligible = checkRewardEligible(user.boostFactors.length);
+
+        if (claimEligible && rewardEligible) {
+            _claimBaseRewards(_pid, msg.sender);
         }
+
         pool.lpToken.safeTransferFrom(
             address(msg.sender),
             address(this),
@@ -432,15 +390,18 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         if (annex == address(pool.lpToken)) {
             lpSupplyOfAnnPool = lpSupplyOfAnnPool.add(_amount);
         }
-        if (checkRewardEligible(user.boostFactors.length)) {
-            user.amount = user.amount.add(_amount);
+        if (rewardEligible) {
+            user.amount = user.amount.add(user.pendingAmount).add(_amount);
+            pool.rewardEligibleSupply = pool.rewardEligibleSupply.add(_amount);
+            user.pendingAmount = 0;
         } else {
             user.pendingAmount = user.pendingAmount.add(_amount);
         }
-        if (claimEligible) {
+        if (claimEligible && rewardEligible) {
             user.rewardDebt = user.amount.mul(pool.accRewardPerShare).div(1e12);
         }
         user.depositedDate = block.timestamp;
+        user.boostedDate = block.timestamp;
         emit Deposit(msg.sender, _pid, _amount);
     }
 
@@ -448,15 +409,16 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
     function withdraw(uint256 _pid, uint256 _amount) external nonReentrant {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
-        require(user.amount >= _amount, "withdraw: not good");
+        require(user.amount + user.pendingAmount >= _amount, "withdraw: not good");
         require(block.timestamp - user.depositedDate > unstakableTime, "not eligible to undtake");
         updatePool(_pid);
-        uint256 pending =
-            user.amount.mul(pool.accRewardPerShare).div(1e12).sub(
-                user.rewardDebt
-            );
-        safeRewardTransfer(msg.sender, pending);
-        user.amount = user.amount.sub(_amount);
+        _claimBaseRewards(_pid, msg.sender);
+        if (user.amount > 0) {
+            user.amount = user.amount.sub(_amount);
+            pool.rewardEligibleSupply = pool.rewardEligibleSupply.sub(_amount);
+        } else {
+            user.pendingAmount = user.pendingAmount.sub(_amount);
+        }
         user.rewardDebt = user.amount.mul(pool.accRewardPerShare).div(1e12);
         if (annex == address(pool.lpToken)) {
             lpSupplyOfAnnPool = lpSupplyOfAnnPool.sub(_amount);
@@ -470,9 +432,13 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
     function emergencyWithdraw(uint256 _pid) external nonReentrant {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
-        pool.lpToken.safeTransfer(address(msg.sender), user.amount);
+        pool.lpToken.safeTransfer(address(msg.sender), user.amount.add(user.pendingAmount));
         emit EmergencyWithdraw(msg.sender, _pid, user.amount);
+        if (user.amount > 0) {
+            pool.rewardEligibleSupply = pool.rewardEligibleSupply.sub(user.amount);
+        }
         user.amount = 0;
+        user.pendingAmount = 0;
         user.rewardDebt = 0;
     }
 
@@ -496,14 +462,22 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         }
     }
 
+    function updateInitialBoostMultiplier(uint _initialBoostMultiplier) external onlyOwner {
+        initialBoostMultiplier = _initialBoostMultiplier;
+    }
+
+    function updatedBoostMultiplierFactor(uint _boostMultiplierFactor) external onlyOwner {
+        boostMultiplierFactor = _boostMultiplierFactor;
+    }
+
     // Update reward token address by owner.
-    function updateRewardToken(address _reward) public onlyOwner {
+    function updateRewardToken(address _reward) external onlyOwner {
         rewardToken = _reward;
     }
 
-    // Update claimRewardTime
-    function updateClaimRewardTime(uint256 _claimRewardTime) external onlyOwner {
-        claimRewardTime = _claimRewardTime;
+    // Update claimBaseRewardTime
+    function updateClaimBaseRewardTime(uint256 _claimBaseRewardTime) external onlyOwner {
+        claimBaseRewardTime = _claimBaseRewardTime;
     }
 
     // Update unstakableTime
@@ -513,11 +487,69 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
 
     // NFT Boosting
 
-    // Update the given reward per block. Can only be called by the owner.
-    function setBoostRewardPerBlock(
-        uint256 speed
-    ) public onlyOwner {
-        boostRewardPerBlock = speed;
+    // View function to see pending ANNs on frontend.
+    function pendingBoostReward(uint256 _pid, address _user)
+        external
+        view
+        returns (uint256)
+    {
+        PoolInfo storage pool = poolInfo[_pid];
+        UserInfo storage user = userInfo[_pid][_user];
+        uint256 accRewardPerShare = pool.accRewardPerShare;
+        // uint256 lpSupply;
+        // if (annex == address(pool.lpToken)) {
+        //     lpSupply = lpSupplyOfAnnPool;
+        // } else {
+        //     lpSupply = pool.lpToken.balanceOf(address(this));
+        // }
+        if (block.number > pool.lastRewardBlock && pool.rewardEligibleSupply > 0) {
+            uint256 multiplier =
+                getMultiplier(pool.lastRewardBlock, block.number);
+            uint256 reward =
+                multiplier.mul(rewardPerBlock).mul(pool.allocPoint).div(
+                    totalAllocPoint
+                );
+            accRewardPerShare = accRewardPerShare.add(
+                reward.mul(1e12).div(pool.rewardEligibleSupply)
+            );
+        }
+
+        uint256 boostMultiplier = getBoostMultiplier(user.boostFactors.length);
+        uint256 baseReward = user.amount.mul(accRewardPerShare).div(1e12).sub(user.rewardDebt);
+        uint256 boostReward = boostMultiplier.mul(baseReward);
+        return user.accBoostReward.sub(user.boostRewardDebt).add(boostReward);
+    }
+
+    // Claim boost reward
+    function claimBoostReward(uint256 _pid) external {
+        PoolInfo storage pool = poolInfo[_pid];
+        UserInfo storage user = userInfo[_pid][msg.sender];
+        require(block.timestamp - user.boostedDate > claimBoostRewardTime, "not eligible to claim");
+        uint256 accRewardPerShare = pool.accRewardPerShare;
+        // uint256 lpSupply;
+        // if (annex == address(pool.lpToken)) {
+        //     lpSupply = lpSupplyOfAnnPool;
+        // } else {
+        //     lpSupply = pool.lpToken.balanceOf(address(this));
+        // }
+        if (block.number > pool.lastRewardBlock && pool.rewardEligibleSupply > 0) {
+            uint256 multiplier =
+                getMultiplier(pool.lastRewardBlock, block.number);
+            uint256 reward =
+                multiplier.mul(rewardPerBlock).mul(pool.allocPoint).div(
+                    totalAllocPoint
+                );
+            accRewardPerShare = accRewardPerShare.add(
+                reward.mul(1e12).div(pool.rewardEligibleSupply)
+            );
+        }
+
+        uint256 boostMultiplier = getBoostMultiplier(user.boostFactors.length);
+        uint256 baseReward = user.amount.mul(accRewardPerShare).div(1e12).sub(user.rewardDebt);
+        uint256 boostReward = boostMultiplier.mul(baseReward);
+        safeRewardTransfer(msg.sender, user.accBoostReward.sub(user.boostRewardDebt).add(boostReward));
+        user.boostRewardDebt = user.boostRewardDebt.add(boostReward);
+        user.boostedDate = block.timestamp;
     }
 
     function _boost(uint256 _pid, uint _tokenId) internal {
@@ -528,29 +560,37 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
 
         isBoosted[_tokenId] = true;
 
-        UserInfo storage user = userInfo[_pid][msg.sender];
-        uint originBoostFactors = user.boostFactors.length;
-        user.boostFactors.push(_tokenId);
-
         PoolInfo storage pool = poolInfo[_pid];
-        if (user.boostFactors.length > minimumValidBoostCount && originBoostFactors <= minimumValidBoostCount) {
-            pool.totalValidBoostCount++;
-            pool.totalValidBoostNum = pool.totalValidBoostNum + user.boostFactors.length;
-        } else if (originBoostFactors > minimumValidBoostCount) {
-            pool.totalValidBoostNum++;
+        UserInfo storage user = userInfo[_pid][msg.sender];
+        if (user.pendingAmount > 0) {
+            user.amount = user.pendingAmount;
+            pool.rewardEligibleSupply = pool.rewardEligibleSupply.add(user.amount);
+            user.pendingAmount = 0;
         }
+        user.boostFactors.push(_tokenId);
+        pool.totalBoostCount = pool.totalBoostCount + 1;
 
         emit Boost(msg.sender, _pid, _tokenId);
     }
 
     function boost(uint256 _pid, uint _tokenId) external {
-        _claimRewards(_pid, msg.sender);
+        UserInfo storage user = userInfo[_pid][msg.sender];
+        bool claimEligible = checkRewardClaimEligible(user.depositedDate);
+        updatePool(_pid);
+        if (claimEligible) {
+            _claimBaseRewards(_pid, msg.sender);
+        }
         _boost(_pid, _tokenId);
-        _updateUserDebt(_pid, msg.sender);
+        user.boostedDate = block.timestamp;
     }
 
     function boostPartially(uint _pid, uint tokenAmount) external {
-        _claimRewards(_pid, msg.sender);
+        UserInfo storage user = userInfo[_pid][msg.sender];
+        bool claimEligible = checkRewardClaimEligible(user.depositedDate);
+        updatePool(_pid);
+        if (claimEligible) {
+            _claimBaseRewards(_pid, msg.sender);
+        }
         uint256 ownerTokenCount = boostFactor.balanceOf(msg.sender);
         require(tokenAmount <= ownerTokenCount);
 
@@ -560,11 +600,16 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
 
             _boost(_pid, _tokenId);
         } while (tokenAmount > 0);
-        _updateUserDebt(_pid, msg.sender);
+        user.boostedDate = block.timestamp;
     }
 
     function boostAll(uint _pid) external {
-        _claimRewards(_pid, msg.sender);
+        UserInfo storage user = userInfo[_pid][msg.sender];
+        bool claimEligible = checkRewardClaimEligible(user.depositedDate);
+        updatePool(_pid);
+        if (claimEligible) {
+            _claimBaseRewards(_pid, msg.sender);
+        }
         uint256 ownerTokenCount = boostFactor.balanceOf(msg.sender);
         require(ownerTokenCount > 0, "");
 
@@ -572,10 +617,9 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
             uint _tokenId = boostFactor.tokenOfOwnerByIndex(msg.sender, ownerTokenCount - 1);
 
             _boost(_pid, _tokenId);
-            ownerTokenCount = boostFactor.balanceOf(msg.sender);
+            ownerTokenCount = ownerTokenCount - 1;
         } while (ownerTokenCount > 0);
-
-        _updateUserDebt(_pid, msg.sender);
+        user.boostedDate = block.timestamp;
     }
 
     function _unBoost(uint _pid, uint _tokenId) internal {
@@ -586,87 +630,62 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
 
         isBoosted[_tokenId] = false;
 
-        UserInfo storage user = userInfo[_pid][msg.sender];
-        PoolInfo storage pool = poolInfo[_pid];
-        uint length = user.boostFactors.length;
-        if (length > minimumValidBoostCount && length - 1 <= minimumValidBoostCount) {
-            pool.totalValidBoostCount--;
-            pool.totalValidBoostNum = pool.totalValidBoostNum - length;
-        } else if (length - 1 > minimumValidBoostCount) {
-            pool.totalValidBoostNum--;
-        }
-
         emit UnBoost(msg.sender, _pid, _tokenId);
     }
 
     function unBoostPartially(uint _pid, uint tokenAmount) external {
+        PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.boostFactors.length > 0, "");
         require(tokenAmount <= user.boostFactors.length, "");
 
-        _claimRewards(_pid, msg.sender);
-
+        bool claimEligible = checkRewardClaimEligible(user.depositedDate);
+        updatePool(_pid);
+        if (claimEligible) {
+            _claimBaseRewards(_pid, msg.sender);
+        }
         for (uint i; i < tokenAmount; i++) {
             uint index = user.boostFactors.length - 1;
             uint _tokenId = user.boostFactors[index];
 
             _unBoost(_pid, _tokenId);
             user.boostFactors.pop();
+            pool.totalBoostCount = pool.totalBoostCount + 1;
         }
-        _updateUserDebt(_pid, msg.sender);
+        user.boostedDate = block.timestamp;
+
+        if (user.boostFactors.length == 0) {
+            user.pendingAmount = user.amount;
+            user.amount = 0;
+            pool.rewardEligibleSupply = pool.rewardEligibleSupply.sub(user.pendingAmount);
+        }
     }
 
     function unBoostAll(uint _pid) external {
+        PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.boostFactors.length > 0, "");
 
-        _claimRewards(_pid, msg.sender);
-
+        bool claimEligible = checkRewardClaimEligible(user.depositedDate);
+        updatePool(_pid);
+        if (claimEligible) {
+            _claimBaseRewards(_pid, msg.sender);
+        }
         do {
             uint index = user.boostFactors.length - 1;
             uint _tokenId = user.boostFactors[index];
 
             _unBoost(_pid, _tokenId);
             user.boostFactors.pop();
+            pool.totalBoostCount = pool.totalBoostCount + 1;
         } while (user.boostFactors.length > 0);
-        _updateUserDebt(_pid, msg.sender);
-    }
+        user.boostedDate = block.timestamp;
 
-    function _claimRewards(uint256 _pid, address _user) internal {
-        PoolInfo storage pool = poolInfo[_pid];
-        UserInfo storage user = userInfo[_pid][_user];
-        require(user.amount > 0, "No deposited lptokens");
-        updatePool(_pid);
-        uint256 validBoostFactors = getValidBoostFactors(user.boostFactors.length);
-
-        uint256 pending =
-            user.amount.mul(pool.accRewardPerShare).div(1e12).sub(
-                user.rewardDebt
-            );
-        uint256 boostPending = validBoostFactors.mul(pool.accBoostRewardPerShare).div(1e12).sub(user.boostRewardDebt);
-        safeRewardTransfer(_user, pending.add(boostPending));
-    }
-
-    function _updateUserDebt(uint256 _pid, address _user) internal {
-        PoolInfo storage pool = poolInfo[_pid];
-        UserInfo storage user = userInfo[_pid][_user];
-        uint256 validBoostFactors = getValidBoostFactors(user.boostFactors.length);
-        user.rewardDebt = user.amount.mul(pool.accRewardPerShare).div(1e12);
-        user.boostRewardDebt = validBoostFactors.mul(pool.accBoostRewardPerShare).div(1e12);
-    }
-
-    function checkOriginOwner(uint _pid, address _user, uint _tokenId) internal view returns (bool) {
-        UserInfo storage user = userInfo[_pid][_user];
-
-        bool owner = false;
-        for (uint i; i < user.boostFactors.length; i++) {
-            if (_tokenId == user.boostFactors[i]) {
-                owner = true;
-                break;
-            }
+        if (user.boostFactors.length == 0) {
+            user.pendingAmount = user.amount;
+            user.amount = 0;
+            pool.rewardEligibleSupply = pool.rewardEligibleSupply.sub(user.pendingAmount);
         }
-
-        return owner;
     }
 
     // Update boostFactor address. Can only be called by the owner.

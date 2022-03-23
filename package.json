@@ -1,7 +1,7 @@
 {
-  "name": "agency-wolf-billionaire-club",
+  "name": "annex-iron-wolf",
   "version": "1.0.0",
-  "description": "Agency Wolf Billionaire Club NFT contract",
+  "description": "Annex Iron Wolf NFT contract",
   "main": "index.js",
   "scripts": {
     "build": "hardhat compile",
