@@ -139,7 +139,7 @@ describe("AnnexBoostFarm", function() {
       expect(await this.rewardToken.balanceOf(this.bob.address)).to.equal("1000")
     })
 
-    it("should not distribute ANNs if no one deposit", async function() {
+    it("should not distribute ANNs if no one deposit and can't withdraw until unstakableTime", async function() {
       this.chef = await this.AnnexBoostFarm.deploy(
         this.annex.address,
         this.rewardToken.address,
@@ -151,6 +151,7 @@ describe("AnnexBoostFarm", function() {
       await this.chef.deployed()
 
       this.rewardToken.transfer(this.chef.address, "10000")
+      await this.boostToken.setStakingAddress(this.chef.address)
 
       await this.chef.add("100", this.annex.address, true)
       await this.annex.connect(this.bob).approve(this.chef.address, "1000", { from: this.bob.address })
@@ -162,93 +163,103 @@ describe("AnnexBoostFarm", function() {
       await this.chef.connect(this.bob).deposit(0, "100", { from: this.bob.address }) // block 210
       expect(await this.rewardToken.balanceOf(this.chef.address)).to.equal("10000")
       expect(await this.rewardToken.balanceOf(this.bob.address)).to.equal("0")
+      await this.chef.updateUnstakableTime(1)
       await time.advanceBlockTo("219")
-      await this.chef.connect(this.bob).withdraw(0, "10", { from: this.bob.address }) // block 220
-      expect(await this.annex.balanceOf(this.chef.address)).to.equal("0")
-      expect(await this.annex.balanceOf(this.bob.address)).to.equal("9000")
-      expect(await this.annex.balanceOf(this.dev.address)).to.equal("1000")
-      expect(await this.lp.balanceOf(this.bob.address)).to.equal("1000")
+      await this.chef.connect(this.bob).withdraw(0, "100", { from: this.bob.address }) // block 220
+      expect(await this.rewardToken.balanceOf(this.chef.address)).to.equal("10000")
+      expect(await this.rewardToken.balanceOf(this.bob.address)).to.equal("0")
+      expect(await this.annex.balanceOf(this.bob.address)).to.equal("1000")
     })
 
-    // it("should distribute ANNs properly for each staker", async function() {
-    //   // 100 per block farming rate starting at block 300 with bonus until block 1000
-    //   this.chef = await this.AnnexBoostFarm.deploy(
-    //     this.annex.address,
-    //     this.boostToken.address,
-    //     this.dev.address,
-    //     "100",
-    //     "100",
-    //     "300",
-    //     "1000"
-    //   )
-    //   await this.chef.deployed()
+    it("should distribute ANNs properly for each staker", async function() {
+      this.chef = await this.AnnexBoostFarm.deploy(
+        this.annex.address,
+        this.rewardToken.address,
+        this.boostToken.address,
+        "100",
+        "100",
+        "0"
+      )
+      await this.chef.deployed()
 
-    //   // Transfer 10,000 ANN to AnnexBoostFarm
-    //   this.annex.transfer(this.chef.address, "100000")
+      this.rewardToken.transfer(this.chef.address, "10000")
+      await this.boostToken.setStakingAddress(this.chef.address)
+      await this.chef.updateClaimBaseRewardTime(0)
+      await this.chef.updateUnstakableTime(1)
+      await this.chef.updateClaimBoostRewardTime(0)
 
-    //   // await this.annex.transferOwnership(this.chef.address)
-    //   await this.chef.add("100", this.lp.address, true)
-    //   await this.lp.connect(this.alice).approve(this.chef.address, "1000", {
-    //     from: this.alice.address,
-    //   })
-    //   await this.lp.connect(this.bob).approve(this.chef.address, "1000", {
-    //     from: this.bob.address,
-    //   })
-    //   await this.lp.connect(this.carol).approve(this.chef.address, "1000", {
-    //     from: this.carol.address,
-    //   })
-    //   // Alice deposits 10 LPs at block 310
-    //   await time.advanceBlockTo("309")
-    //   await this.chef.connect(this.alice).deposit(0, "10", { from: this.alice.address })
-    //   // Bob deposits 20 LPs at block 314
-    //   await time.advanceBlockTo("313")
-    //   await this.chef.connect(this.bob).deposit(0, "20", { from: this.bob.address })
-    //   // Carol deposits 30 LPs at block 318
-    //   await time.advanceBlockTo("317")
-    //   await this.chef.connect(this.carol).deposit(0, "30", { from: this.carol.address })
-    //   // Alice deposits 10 more LPs at block 320. At this point:
-    //   //   Alice should have: 4*1000 + 4*1/3*1000 + 2*1/6*1000 = 5666
-    //   //   AnnexBoostFarm should have the remaining: 10000 - 5666 = 4334
-    //   await time.advanceBlockTo("319")
-    //   await this.chef.connect(this.alice).deposit(0, "10", { from: this.alice.address })
-    //   expect(await this.annex.balanceOf(this.chef.address)).to.equal("93334")
-    //   expect(await this.annex.balanceOf(this.alice.address)).to.equal("5666")
-    //   expect(await this.annex.balanceOf(this.bob.address)).to.equal("0")
-    //   expect(await this.annex.balanceOf(this.carol.address)).to.equal("0")
-    //   expect(await this.annex.balanceOf(this.chef.address)).to.equal("93334")
-    //   expect(await this.annex.balanceOf(this.dev.address)).to.equal("1000")
-    //   // Bob withdraws 5 LPs at block 330. At this point:
-    //   //   Bob should have: 4*2/3*1000 + 2*2/6*1000 + 10*2/7*1000 = 6190
-    //   await time.advanceBlockTo("329")
-    //   await this.chef.connect(this.bob).withdraw(0, "5", { from: this.bob.address })
-    //   expect(await this.annex.totalSupply()).to.equal("1000000000000000000000000000")
-    //   expect(await this.annex.balanceOf(this.alice.address)).to.equal("5666")
-    //   expect(await this.annex.balanceOf(this.bob.address)).to.equal("6190")
-    //   expect(await this.annex.balanceOf(this.carol.address)).to.equal("0")
-    //   expect(await this.annex.balanceOf(this.chef.address)).to.equal("86144")
-    //   expect(await this.annex.balanceOf(this.dev.address)).to.equal("2000")
-    //   // Alice withdraws 20 LPs at block 340.
-    //   // Bob withdraws 15 LPs at block 350.
-    //   // Carol withdraws 30 LPs at block 360.
-    //   await time.advanceBlockTo("339")
-    //   await this.chef.connect(this.alice).withdraw(0, "20", { from: this.alice.address })
-    //   await time.advanceBlockTo("349")
-    //   await this.chef.connect(this.bob).withdraw(0, "15", { from: this.bob.address })
-    //   await time.advanceBlockTo("359")
-    //   await this.chef.connect(this.carol).withdraw(0, "30", { from: this.carol.address })
-    //   expect(await this.annex.balanceOf(this.chef.address)).to.equal("45001")
-    //   expect(await this.annex.balanceOf(this.dev.address)).to.equal("5000")
-    //   // // Alice should have: 5666 + 10*2/7*1000 + 10*2/6.5*1000 = 11600
-    //   expect(await this.annex.balanceOf(this.alice.address)).to.equal("11600")
-    //   // // Bob should have: 6190 + 10*1.5/6.5 * 1000 + 10*1.5/4.5*1000 = 11831
-    //   expect(await this.annex.balanceOf(this.bob.address)).to.equal("11831")
-    //   // // Carol should have: 2*3/6*1000 + 10*3/7*1000 + 10*3/6.5*1000 + 10*3/4.5*1000 + 10*1000 = 26568
-    //   expect(await this.annex.balanceOf(this.carol.address)).to.equal("26568")
-    //   // // All of them should have 1000 LPs back.
-    //   expect(await this.lp.balanceOf(this.alice.address)).to.equal("1000")
-    //   expect(await this.lp.balanceOf(this.bob.address)).to.equal("1000")
-    //   expect(await this.lp.balanceOf(this.carol.address)).to.equal("1000")
-    // })
+      await this.chef.add("100", this.annex.address, true)
+      await this.annex.connect(this.alice).approve(this.chef.address, "1000", {
+        from: this.alice.address,
+      })
+      await this.annex.connect(this.bob).approve(this.chef.address, "1000", {
+        from: this.bob.address,
+      })
+      await this.annex.connect(this.carol).approve(this.chef.address, "1000", {
+        from: this.carol.address,
+      })
+      // Alice deposits 10 LPs at block 310
+      await time.advanceBlockTo("309")
+      await this.chef.connect(this.alice).deposit(0, "10", { from: this.alice.address })
+      // Bob deposits 20 LPs at block 314
+      await time.advanceBlockTo("313")
+      await this.chef.connect(this.bob).deposit(0, "20", { from: this.bob.address })
+      // Carol deposits 30 LPs at block 318
+      await time.advanceBlockTo("317")
+      await this.chef.connect(this.carol).deposit(0, "30", { from: this.carol.address })
+      // Alice deposits 10 more LPs at block 320. At this point:
+      // Alice should have: 4*1000 + 4*1/3*1000 + 2*1/6*1000 = 5666
+      // AnnexBoostFarm should have the remaining: 10000 - 5666 = 4334
+      await time.advanceBlockTo("319")
+      await this.chef.connect(this.alice).deposit(0, "10", { from: this.alice.address }) // block 320
+      expect(await this.annex.balanceOf(this.chef.address)).to.equal("70")
+      expect(await this.annex.balanceOf(this.alice.address)).to.equal("980")
+      expect(await this.annex.balanceOf(this.bob.address)).to.equal("980")
+      expect(await this.annex.balanceOf(this.carol.address)).to.equal("970")
+      expect(await this.rewardToken.balanceOf(this.chef.address)).to.equal("10000")
+
+      await this.boostToken.gift(15, this.bob.address) // block 321
+      await this.boostToken.gift(15, this.alice.address) // block 322
+      await this.boostToken.gift(15, this.carol.address) // block 323
+      await this.boostToken.connect(this.bob).setApprovalForAll(this.chef.address, true, { from: this.bob.address }) // block 324
+      await this.boostToken.connect(this.alice).setApprovalForAll(this.chef.address, true, { from: this.alice.address }) // block 325
+      await this.boostToken.connect(this.carol).setApprovalForAll(this.chef.address, true, { from: this.carol.address }) // block 326
+      await time.advanceBlockTo("330")
+      await this.chef.connect(this.bob).boost(0, 1, { from: this.bob.address }) // block 331
+      await this.chef.connect(this.bob).deposit(0, 0, { from: this.bob.address }) // block 332
+      expect(await this.rewardToken.balanceOf(this.bob.address)).to.equal("100")
+      expect(await this.rewardToken.balanceOf(this.alice.address)).to.equal("0")
+
+      await this.chef.connect(this.alice).boost(0, 16, { from: this.alice.address }) // block 333
+
+      await this.chef.connect(this.bob).deposit(0, 0, { from: this.bob.address }) // block 334
+      expect(await this.rewardToken.balanceOf(this.bob.address)).to.equal("150")
+      
+      await this.chef.connect(this.alice).deposit(0, 0, { from: this.alice.address }) // block 335
+      expect(await this.rewardToken.balanceOf(this.alice.address)).to.equal("50")
+
+      // bob boost one more nft
+      await this.chef.connect(this.bob).boost(0, 2, { from: this.bob.address }) // block 336
+      await time.advanceBlockTo("340")
+      // boostReward = 50 * 4 * 0.4 = 80
+      expect(await this.chef.pendingBaseReward(0, this.bob.address)).to.equal("200")
+      expect(await this.chef.pendingBoostReward(0, this.bob.address)).to.equal("80")
+      expect(await this.chef.pendingReward(0, this.bob.address)).to.equal("280")
+
+      await this.chef.connect(this.bob).boost(0, 3, { from: this.bob.address }) // block 341
+      await time.advanceBlockTo("351")
+      // boostReward = 50 * 10 * 0.6 = 300
+      expect(await this.chef.pendingBaseReward(0, this.bob.address)).to.equal("500")
+      expect(await this.chef.pendingBoostReward(0, this.bob.address)).to.equal("400")
+      expect(await this.chef.pendingReward(0, this.bob.address)).to.equal("900")
+
+      await this.chef.connect(this.bob).boostPartially(0, 7, { from: this.bob.address }) // block 352
+      await time.advanceBlockTo("362")
+      // boostReward = 50 * 10 * 2 = 1000
+      expect(await this.chef.pendingBaseReward(0, this.bob.address)).to.equal("500")
+      expect(await this.chef.pendingBoostReward(0, this.bob.address)).to.equal("1430")
+      expect(await this.chef.pendingReward(0, this.bob.address)).to.equal("1930")
+    })
 
     // it("should give proper ANNs allocation to each pool", async function() {
     //   // 100 per block farming rate starting at block 400 with bonus until block 1000
