@@ -603,13 +603,13 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
     function boostPartially(uint _pid, uint tokenAmount) external {
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.boostFactors.length + tokenAmount <= maximumBoostCount);
+        uint256 ownerTokenCount = boostFactor.balanceOf(msg.sender);
+        require(tokenAmount <= ownerTokenCount);
         bool claimEligible = checkRewardClaimEligible(user.depositedDate);
         // updatePool(_pid);
         if (claimEligible) {
             _claimBaseRewards(_pid, msg.sender);
         }
-        uint256 ownerTokenCount = boostFactor.balanceOf(msg.sender);
-        require(tokenAmount <= ownerTokenCount);
 
         do {
             tokenAmount--;
@@ -624,7 +624,10 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         UserInfo storage user = userInfo[_pid][msg.sender];
         uint256 ownerTokenCount = boostFactor.balanceOf(msg.sender);
         require(ownerTokenCount > 0, "");
-        require(user.boostFactors.length + ownerTokenCount <= maximumBoostCount);
+        uint256 tokenAmount = maximumBoostCount - user.boostFactors.length;
+        if (ownerTokenCount < tokenAmount) {
+            tokenAmount = ownerTokenCount;
+        }
         bool claimEligible = checkRewardClaimEligible(user.depositedDate);
         // updatePool(_pid);
         if (claimEligible) {
@@ -632,11 +635,11 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         }
 
         do {
-            uint _tokenId = boostFactor.tokenOfOwnerByIndex(msg.sender, ownerTokenCount - 1);
+            tokenAmount--;
+            uint _tokenId = boostFactor.tokenOfOwnerByIndex(msg.sender, tokenAmount);
 
             _boost(_pid, _tokenId);
-            ownerTokenCount = ownerTokenCount - 1;
-        } while (ownerTokenCount > 0);
+        } while (tokenAmount > 0);
         user.boostedDate = block.timestamp;
     }
 
