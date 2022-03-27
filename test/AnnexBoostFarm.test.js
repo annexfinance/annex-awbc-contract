@@ -332,5 +332,40 @@ describe("AnnexBoostFarm", function() {
       // expect(await this.chef.pendingAnnex(0, this.alice.address)).to.equal("13333")
       // expect(await this.chef.pendingAnnex(1, this.bob.address)).to.equal("3333")
     })
+
+    it("should get all of p0ending boost rewards", async function() {
+      this.chef = await this.AnnexBoostFarm.deploy(
+        this.annex.address,
+        this.rewardToken.address,
+        this.boostToken.address,
+        "100",
+        "100",
+        "0"
+      )
+      await this.chef.deployed()
+
+      this.rewardToken.transfer(this.chef.address, "10000")
+      await this.boostToken.setStakingAddress(this.chef.address)
+      await this.chef.updateClaimBaseRewardTime(0)
+      await this.chef.updateUnstakableTime(1)
+      await this.chef.updateClaimBoostRewardTime(0)
+
+      await this.chef.add("100", this.annex.address, true)
+      await this.annex.connect(this.alice).approve(this.chef.address, "1000", {
+        from: this.alice.address,
+      })
+      await this.annex.connect(this.bob).approve(this.chef.address, "1000", {
+        from: this.bob.address,
+      })
+      await this.annex.connect(this.carol).approve(this.chef.address, "1000", {
+        from: this.carol.address,
+      })
+
+      await this.chef.connect(this.bob).deposit(0, "10", { from: this.bob.address })
+      await this.chef.connect(this.alice).deposit(0, "20", { from: this.alice.address })
+      await this.chef.connect(this.carol).deposit(0, "30", { from: this.carol.address })
+
+      // console.log(await this.chef.getTotalPendingBoostRewards())
+    })
   })
 })
