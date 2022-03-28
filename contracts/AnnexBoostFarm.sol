@@ -5,6 +5,7 @@ pragma solidity 0.6.12;
 import "./interfaces/IBoostToken.sol";
 import "./interfaces/IERC721Receiver.sol";
 import "./interfaces/IERC20.sol";
+import "./interfaces/IVANN.sol";
 import "./libraries/SafeERC20.sol";
 import "./libraries/EnumerableSet.sol";
 import "./libraries/SafeMath.sol";
@@ -55,6 +56,8 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
     }
     // The Annex TOKEN!
     address public annex;
+    // The vAnnex TOKEN!
+    address public vAnn;
     // The Reward TOKEN!
     address public rewardToken;
     // Block number when bonus ANN period ends.
@@ -63,6 +66,8 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
     uint256 public rewardPerBlock;
     // Bonus muliplier for early annex makers.
     uint256 public constant BONUS_MULTIPLIER = 10;
+    // VANN minting rate
+    uint256 public constant VANN_RATE = 10;
     // Info of each pool.
     PoolInfo[] private poolInfo;
     // Total ANN amount deposited in ANN single pool. To reduce tx-fee, not included in struct PoolInfo.
@@ -106,6 +111,7 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
     constructor(
         address _annex,
         address _rewardToken,
+        address _vAnn,
         address _boost,
         uint256 _rewardPerBlock,
         uint256 _startBlock,
@@ -113,6 +119,7 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
     ) public {
         annex = _annex;
         rewardToken = _rewardToken;
+        vAnn = _vAnn;
         boostFactor = IBoostToken(_boost);
         rewardPerBlock = _rewardPerBlock;
         bonusEndBlock = _bonusEndBlock;
@@ -420,6 +427,7 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         if (claimEligible && rewardEligible) {
             user.rewardDebt = user.amount.mul(pool.accRewardPerShare).div(1e12);
         }
+        IVANN(vAnn).mint(msg.sender, _amount.mul(VANN_RATE));
         user.depositedDate = block.timestamp;
         user.boostedDate = block.timestamp;
         emit Deposit(msg.sender, _pid, _amount);
@@ -443,9 +451,51 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         if (annex == address(pool.lpToken)) {
             lpSupplyOfAnnPool = lpSupplyOfAnnPool.sub(_amount);
         }
+        IVANN(vAnn).burnFrom(msg.sender, _amount.mul(VANN_RATE));
         pool.lpToken.safeTransfer(address(msg.sender), _amount);
         user.depositedDate = block.timestamp;
         emit Withdraw(msg.sender, _pid, _amount);
+    }
+
+    // transfer VANN
+    function move(uint256 _pid, address _sender, address _recipient, uint256 _vannAmount) external nonReentrant {
+        PoolInfo storage pool = poolInfo[_pid];
+        UserInfo storage sender = userInfo[_pid][_sender];
+        UserInfo storage recipient = userInfo[_pid][_recipient];
+
+        uint256 amount = _vannAmount.div(VANN_RATE);
+
+        require(sender.amount + sender.pendingAmount >= amount, "transfer exceeds amount");
+        require(block.timestamp - sender.depositedDate > unstakableTime, "not eligible to undtake");
+
+        _claimBaseRewards(_pid, _sender);
+
+        if (sender.amount > 0) {
+            sender.amount = sender.amount.sub(amount);
+        } else {
+            sender.pendingAmount = sender.pendingAmount.sub(amount);
+        }
+        sender.rewardDebt = sender.amount.mul(pool.accRewardPerShare).div(1e12);
+        sender.depositedDate = block.timestamp;
+
+        bool claimEligible = checkRewardClaimEligible(recipient.depositedDate);
+        bool rewardEligible = checkRewardEligible(recipient.boostFactors.length);
+
+        if (claimEligible && rewardEligible) {
+            _claimBaseRewards(_pid, _recipient);
+        }
+
+        if (rewardEligible) {
+            recipient.amount = recipient.amount.add(recipient.pendingAmount).add(amount);
+            recipient.pendingAmount = 0;
+        } else {
+            recipient.pendingAmount = recipient.pendingAmount.add(amount);
+        }
+        if (claimEligible && rewardEligible) {
+            recipient.rewardDebt = recipient.amount.mul(pool.accRewardPerShare).div(1e12);
+        }
+        recipient.depositedDate = block.timestamp;
+        recipient.boostedDate = block.timestamp;
     }
 
     // Withdraw without caring about rewards. EMERGENCY ONLY.
