@@ -18,18 +18,27 @@ const func = async function (hre) {
         "0xb75f3F9D35d256a94BBd7A3fC2E16c768E17930E"
       ] });
 
-  // const annexBoostFarm = deployed.annexBoostFarm
-  //   ? { address: deployed.annexBoostFarm }
-  //   : await deploy("AnnexBoostFarm", { from: deployer, log: true, 
-  //     args: [
-  //       "0xb75f3F9D35d256a94BBd7A3fC2E16c768E17930E",
-  //       annexIronWolf.address,
-  //       "0x79395B873119a42c3B9E4211FCEA9CC0358769Ed",
-  //       "10000000000000000", //annexPerBlock
-  //       "10000000000000000", // boostAnnexPerBlock
-  //       17437841, // bonusEndBlock
-  //       17507606
-  //     ] });
+  const vann = deployed.vann
+    ? { address: deployed.vann }
+    : await deploy("VANNToken", { from: deployer, log: true, 
+      args: [
+        "VANN Token",
+        "VANN"
+      ] });
+  
+  const annexBoostFarm = deployed.annexBoostFarm
+    ? { address: deployed.annexBoostFarm }
+    : await deploy("AnnexBoostFarm", { from: deployer, log: true, 
+      args: [
+        "0xb75f3F9D35d256a94BBd7A3fC2E16c768E17930E",
+        "0x79395B873119a42c3B9E4211FCEA9CC0358769Ed",
+        vann.address,
+        annexIronWolf.address,
+        "10000000000000000", //annexPerBlock
+        "10000000000000000", // boostAnnexPerBlock
+        17437841, // bonusEndBlock
+        17507606
+      ] });
 };
 
 func.tags = ["nft", "annex"];
