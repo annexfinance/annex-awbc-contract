@@ -36,7 +36,7 @@ const func = async function (hre) {
         vann.address,
         annexIronWolf.address,
         "1000000000000000", //annexPerBlock
-        17437841, // boostAnnexPerBlock
+        "1000000000000000", // boostAnnexPerBlock
         17437841, // bonusEndBlock
       ] });
 };

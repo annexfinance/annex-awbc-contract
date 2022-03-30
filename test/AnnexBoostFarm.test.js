@@ -420,6 +420,7 @@ describe("AnnexBoostFarm", function() {
       await this.chef.connect(this.carol).deposit(0, 0, { from: this.carol.address }) // block 550
       await time.advanceBlockTo("561")
       expect(await this.chef.pendingBaseReward(0, this.carol.address)).to.equal("100")
+      // console.log(await this.chef.getUserInfo(0, this.carol.address))
     })
   })
 })

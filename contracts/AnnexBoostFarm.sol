@@ -157,6 +157,30 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         );
     }
 
+    function getUserInfo(uint256 _pid, address _user) external view returns(
+        uint256 amount,
+        uint256 pendingAmount,
+        uint256 rewardDebt,
+        uint256 depositedDate,
+        uint256[] memory boostFactors,
+        uint256 boostRewardDebt,
+        uint256 boostedDate,
+        uint256 accBoostReward
+    ) {
+        UserInfo storage user = userInfo[_pid][_user];
+
+        return (
+            user.amount,
+            user.pendingAmount,
+            user.rewardDebt,
+            user.depositedDate,
+            user.boostFactors,
+            user.boostRewardDebt,
+            user.boostedDate,
+            user.accBoostReward
+        );
+    }
+
     // Add a new lp to the pool. Can only be called by the owner.
     // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
     function add(
@@ -437,6 +461,7 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
 
     // transfer VANN
     function move(uint256 _pid, address _sender, address _recipient, uint256 _vannAmount) external nonReentrant {
+        require(vAnn == msg.sender);
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage sender = userInfo[_pid][_sender];
         UserInfo storage recipient = userInfo[_pid][_recipient];
@@ -569,6 +594,7 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         return user.accBoostReward.sub(user.boostRewardDebt).add(boostReward).div(100);
     }
 
+    // for deposit reward token to contract
     function getTotalPendingBoostRewards() external view returns (uint256) {
         uint256 totalRewards;
         for (uint i; i < poolInfo.length; i++) {
@@ -600,6 +626,7 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         return totalRewards;
     }
 
+    // for deposit reward token to contract
     function getClaimablePendingBoostRewards() external view returns (uint256) {
         uint256 totalRewards;
         for (uint i; i < poolInfo.length; i++) {
