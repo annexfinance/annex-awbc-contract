@@ -157,28 +157,6 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         );
     }
 
-    function getUserInfo(uint _pid, address _user) external view returns (
-        uint256 amount,
-        uint256 pendingAmount,
-        uint256 rewardDebt,
-        uint256 depositedDate,
-        uint256 boostRewardDebt,
-        uint256 boostedDate,
-        uint256 accBoostReward
-    ) {
-        UserInfo storage user = userInfo[_pid][_user];
-
-        return (
-            user.amount,
-            user.pendingAmount,
-            user.rewardDebt,
-            user.depositedDate,
-            user.boostRewardDebt,
-            user.boostedDate,
-            user.accBoostReward
-        );
-    }
-
     // Add a new lp to the pool. Can only be called by the owner.
     // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
     function add(
@@ -558,6 +536,10 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
     }
 
     // NFT Boosting
+    // get boosted users
+    function getBoostedUserCount(uint256 _pid) external view returns(uint256) {
+        return boostedUsers[_pid].length;
+    }
 
     // View function to see pending ANNs on frontend.
     function pendingBoostReward(uint256 _pid, address _user)
@@ -797,7 +779,7 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
 
             _unBoost(_pid, _tokenId);
             user.boostFactors.pop();
-            pool.totalBoostCount = pool.totalBoostCount + 1;
+            pool.totalBoostCount = pool.totalBoostCount - 1;
         }
         user.boostedDate = block.timestamp;
 
@@ -834,7 +816,7 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
 
             _unBoost(_pid, _tokenId);
             user.boostFactors.pop();
-            pool.totalBoostCount = pool.totalBoostCount + 1;
+            pool.totalBoostCount = pool.totalBoostCount - 1;
         } while (user.boostFactors.length > 0);
         user.boostedDate = block.timestamp;
 
