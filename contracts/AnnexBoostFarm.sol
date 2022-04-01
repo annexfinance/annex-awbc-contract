@@ -285,7 +285,7 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         }
         uint256 boostMultiplier = getBoostMultiplier(user.boostFactors.length);
         uint256 baseReward = user.amount.mul(accRewardPerShare).div(accMulFactor).sub(user.rewardDebt);
-        uint256 boostReward = boostMultiplier.mul(baseReward).add(user.accBoostReward).sub(user.boostRewardDebt).div(100);
+        uint256 boostReward = boostMultiplier.mul(baseReward).div(100).add(user.accBoostReward).sub(user.boostRewardDebt);
         return baseReward.add(boostReward);
     }
 
@@ -372,7 +372,7 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
 
             uint256 boostMultiplier = getBoostMultiplier(user.boostFactors.length);
             uint256 baseReward = user.amount.mul(accRewardPerShare).div(accMulFactor).sub(user.rewardDebt);
-            uint256 boostReward = boostMultiplier.mul(baseReward);
+            uint256 boostReward = boostMultiplier.mul(baseReward).div(100);
             user.accBoostReward = user.accBoostReward.add(boostReward);
 
             if (baseReward > 0) {
@@ -579,8 +579,8 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
 
         uint256 boostMultiplier = getBoostMultiplier(user.boostFactors.length);
         uint256 baseReward = user.amount.mul(accRewardPerShare).div(accMulFactor).sub(user.rewardDebt);
-        uint256 boostReward = boostMultiplier.mul(baseReward);
-        return user.accBoostReward.sub(user.boostRewardDebt).add(boostReward).div(100);
+        uint256 boostReward = boostMultiplier.mul(baseReward).div(100);
+        return user.accBoostReward.sub(user.boostRewardDebt).add(boostReward);
     }
 
     // for deposit reward token to contract
@@ -606,8 +606,8 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
                 }
                 uint256 boostMultiplier = getBoostMultiplier(user.boostFactors.length);
                 uint256 baseReward = user.amount.mul(accRewardPerShare).div(accMulFactor).sub(user.rewardDebt);
-                uint256 initBoostReward = boostMultiplier.mul(baseReward);
-                uint256 boostReward = user.accBoostReward.sub(user.boostRewardDebt).add(initBoostReward).div(100);
+                uint256 initBoostReward = boostMultiplier.mul(baseReward).div(100);
+                uint256 boostReward = user.accBoostReward.sub(user.boostRewardDebt).add(initBoostReward);
                 totalRewards = totalRewards.add(boostReward);
             }
         }
@@ -639,8 +639,8 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
                     }
                     uint256 boostMultiplier = getBoostMultiplier(user.boostFactors.length);
                     uint256 baseReward = user.amount.mul(accRewardPerShare).div(accMulFactor).sub(user.rewardDebt);
-                    uint256 initBoostReward = boostMultiplier.mul(baseReward);
-                    uint256 boostReward = user.accBoostReward.sub(user.boostRewardDebt).add(initBoostReward).div(100);
+                    uint256 initBoostReward = boostMultiplier.mul(baseReward).div(100);
+                    uint256 boostReward = user.accBoostReward.sub(user.boostRewardDebt).add(initBoostReward);
                     totalRewards = totalRewards.add(boostReward);
                 }
             }

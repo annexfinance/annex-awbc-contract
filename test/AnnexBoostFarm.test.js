@@ -280,16 +280,20 @@ describe("AnnexBoostFarm", function() {
       expect(await this.chef.pendingBaseReward(0, this.alice.address)).to.equal("500")
       expect(await this.chef.pendingBoostReward(0, this.alice.address)).to.equal("1000")
       expect(await this.chef.pendingReward(0, this.alice.address)).to.equal("1500")
+      expect(await this.rewardToken.balanceOf(this.alice.address)).to.equal("1500")
+      await this.chef.connect(this.alice).claimBoostReward(0);
+      expect(await this.chef.pendingBaseReward(0, this.alice.address)).to.equal("0")
+      expect(await this.rewardToken.balanceOf(this.alice.address)).to.equal("3150")
 
       // carol balance
       await this.chef.connect(this.carol).boost(0, 31, { from: this.carol.address }) // block 374
       await time.advanceBlockTo("384")
-      expect(await this.chef.pendingBaseReward(0, this.carol.address)).to.equal("500")
+      expect(await this.chef.pendingBaseReward(0, this.carol.address)).to.equal("450")
       expect(await this.chef.pendingBoostReward(0, this.carol.address)).to.equal("0")
-      expect(await this.chef.pendingReward(0, this.carol.address)).to.equal("500")
+      expect(await this.chef.pendingReward(0, this.carol.address)).to.equal("450")
 
-      expect(await this.chef.pendingBaseReward(0, this.alice.address)).to.equal("800")
-      expect(await this.chef.pendingBaseReward(0, this.bob.address)).to.equal("1350")
+      expect(await this.chef.pendingBaseReward(0, this.alice.address)).to.equal("275")
+      expect(await this.chef.pendingBaseReward(0, this.bob.address)).to.equal("1375")
     })
 
     it("should give proper ANNs allocation to each pool", async function() {
