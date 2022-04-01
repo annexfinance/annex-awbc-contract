@@ -147,6 +147,59 @@ describe("AnnexBoostFarm", function() {
     //   expect(await this.rewardToken.balanceOf(this.bob.address)).to.equal("1000")
     // })
 
+    it("should receive rewards with 1m LP token deposit", async function() {
+      this.chef = await this.AnnexBoostFarm.deploy(
+        this.annex.address,
+        this.rewardToken.address,
+        this.vAnn.address,
+        this.boostToken.address,
+        "100",
+        "100",
+        "0"
+      )
+      await this.chef.deployed()
+
+      await this.annex.transfer(this.bob.address, "999000")
+      this.rewardToken.transfer(this.chef.address, "10000")
+      this.vAnn.transferOwnership(this.chef.address, true, false)
+      await this.boostToken.setStakingAddress(this.chef.address)
+      await this.chef.updateClaimBaseRewardTime(0)
+      await this.chef.updateUnstakableTime(1)
+      await this.chef.updateClaimBoostRewardTime(0)
+      
+      await this.chef.setAccMulFactor("1000000000000");
+      await this.chef.add("100", this.annex.address, true)
+      await this.annex.connect(this.bob).approve(this.chef.address, "1000000", { from: this.bob.address })
+      await time.advanceBlockTo("99")
+      expect(await this.rewardToken.balanceOf(this.chef.address)).to.equal("10000")
+      await time.advanceBlockTo("104")
+      expect(await this.rewardToken.balanceOf(this.chef.address)).to.equal("10000")
+      await time.advanceBlockTo("109")
+      await this.chef.connect(this.bob).deposit(0, "1000000", { from: this.bob.address }) // block 210
+      expect(await this.rewardToken.balanceOf(this.chef.address)).to.equal("10000")
+      expect(await this.rewardToken.balanceOf(this.bob.address)).to.equal("0")
+      await this.chef.updateUnstakableTime(1)
+      await time.advanceBlockTo("119")
+      await this.vAnn.connect(this.bob).approve(this.chef.address, "100000000000000000", { from: this.bob.address })
+      
+      await this.boostToken.gift(15, this.bob.address) // block 321
+      await this.boostToken.connect(this.bob).setApprovalForAll(this.chef.address, true, { from: this.bob.address }) // block 324
+      await this.chef.connect(this.bob).boost(0, 1, { from: this.bob.address }) // block 331
+      expect(await this.chef.pendingBaseReward(0, this.bob.address)).to.equal("0")
+      await this.chef.connect(this.bob).deposit(0, 0, { from: this.bob.address }) // block 332
+      expect(await this.rewardToken.balanceOf(this.bob.address)).to.equal("100")
+
+      await this.chef.connect(this.bob).deposit(0, 0, { from: this.bob.address }) // block 332
+      expect(await this.rewardToken.balanceOf(this.bob.address)).to.equal("200")
+      await time.advanceBlockTo("129")
+      expect(await this.chef.pendingBaseReward(0, this.bob.address)).to.equal("400")
+      await this.chef.connect(this.bob).deposit(0, 0, { from: this.bob.address }) // block 332
+      expect(await this.rewardToken.balanceOf(this.bob.address)).to.equal("700")
+      await time.advanceBlockTo("139")
+      expect(await this.chef.pendingBaseReward(0, this.bob.address)).to.equal("900")
+
+    })
+
     it("should not distribute ANNs if no one deposit and can't withdraw until unstakableTime", async function() {
       this.chef = await this.AnnexBoostFarm.deploy(
         this.annex.address,

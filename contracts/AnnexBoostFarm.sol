@@ -371,6 +371,17 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
             uint256 accRewardPerShare = pool.accRewardPerShare;
 
             uint256 boostMultiplier = getBoostMultiplier(user.boostFactors.length);
+            if (block.number > pool.lastRewardBlock && pool.rewardEligibleSupply > 0) {
+                uint256 multiplier =
+                    getMultiplier(pool.lastRewardBlock, block.number);
+                uint256 reward =
+                    multiplier.mul(rewardPerBlock).mul(pool.allocPoint).div(
+                        totalAllocPoint
+                    );
+                accRewardPerShare = accRewardPerShare.add(
+                    reward.mul(accMulFactor).div(pool.rewardEligibleSupply)
+                );
+            }
             uint256 baseReward = user.amount.mul(accRewardPerShare).div(accMulFactor).sub(user.rewardDebt);
             uint256 boostReward = boostMultiplier.mul(baseReward).div(100);
             user.accBoostReward = user.accBoostReward.add(boostReward);
