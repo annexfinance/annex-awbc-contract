@@ -35,8 +35,8 @@ const func = async function (hre) {
         "0x16227D60f7a0e586C66B005219dfc887D13C9531", // usdc
         vann.address,
         annexIronWolf.address,
-        "1000000000000000", //annexPerBlock
-        "1000000000000000", // boostAnnexPerBlock
+        "69444", //annexPerBlock
+        17437841, // startBlock
         17437841, // bonusEndBlock
       ] });
 };

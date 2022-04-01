@@ -1,5 +1,6 @@
 const { ethers } = require("hardhat")
 const { expect } = require("chai")
+const BigNumber = require('bignumber.js')
 const { time } = require("./utilities")
 
 describe("AnnexBoostFarm", function() {
@@ -94,57 +95,57 @@ describe("AnnexBoostFarm", function() {
     //   expect(await this.annex.balanceOf(this.bob.address)).to.equal("1000")
     // })
 
-    it("should give out Rewards only after farming time, boosted with nft", async function() {
-      // 100 per block farming rate starting at block 100 with bonus until block 1000
-      this.chef = await this.AnnexBoostFarm.deploy(
-        this.annex.address,
-        this.rewardToken.address,
-        this.vAnn.address,
-        this.boostToken.address,
-        "100",
-        "100",
-        "100"
-      )
-      await this.chef.deployed()
+    // it("should give out Rewards only after farming time, boosted with nft", async function() {
+    //   // 100 per block farming rate starting at block 100 with bonus until block 1000
+    //   this.chef = await this.AnnexBoostFarm.deploy(
+    //     this.annex.address,
+    //     this.rewardToken.address,
+    //     this.vAnn.address,
+    //     this.boostToken.address,
+    //     "100",
+    //     "100",
+    //     "100"
+    //   )
+    //   await this.chef.deployed()
 
-      this.rewardToken.transfer(this.chef.address, "10000")
-      this.vAnn.transferOwnership(this.chef.address, true, false)
+    //   this.rewardToken.transfer(this.chef.address, "10000")
+    //   this.vAnn.transferOwnership(this.chef.address, true, false)
 
-      await this.chef.add("100", this.annex.address, true)
-      expect(await this.chef.totalAllocPoint()).to.equal("100")
+    //   await this.chef.add("100", this.annex.address, true)
+    //   expect(await this.chef.totalAllocPoint()).to.equal("100")
 
-      await this.annex.connect(this.bob).approve(this.chef.address, "1000", { from: this.bob.address })
-      await this.chef.connect(this.bob).deposit(0, 100, { from: this.bob.address })
-      expect(await this.vAnn.balanceOf(this.bob.address)).to.equal("1000")
-      await time.advanceBlockTo("89")
-      await this.chef.connect(this.bob).deposit(0, 0, { from: this.bob.address }) // block 90
-      expect(await this.rewardToken.balanceOf(this.bob.address)).to.equal("0")
-      await time.advanceBlockTo("94")
+    //   await this.annex.connect(this.bob).approve(this.chef.address, "1000", { from: this.bob.address })
+    //   await this.chef.connect(this.bob).deposit(0, 100, { from: this.bob.address })
+    //   expect(await this.vAnn.balanceOf(this.bob.address)).to.equal("1000")
+    //   await time.advanceBlockTo("89")
+    //   await this.chef.connect(this.bob).deposit(0, 0, { from: this.bob.address }) // block 90
+    //   expect(await this.rewardToken.balanceOf(this.bob.address)).to.equal("0")
+    //   await time.advanceBlockTo("94")
 
-      await this.chef.connect(this.bob).deposit(0, 0, { from: this.bob.address }) // block 95
-      expect(await this.rewardToken.balanceOf(this.bob.address)).to.equal("0")
-      await time.advanceBlockTo("99")
+    //   await this.chef.connect(this.bob).deposit(0, 0, { from: this.bob.address }) // block 95
+    //   expect(await this.rewardToken.balanceOf(this.bob.address)).to.equal("0")
+    //   await time.advanceBlockTo("99")
 
-      // just started reward from 100th block
-      await this.chef.connect(this.bob).deposit(0, 0, { from: this.bob.address }) // block 100
-      expect(await this.rewardToken.balanceOf(this.bob.address)).to.equal("0")
+    //   // just started reward from 100th block
+    //   await this.chef.connect(this.bob).deposit(0, 0, { from: this.bob.address }) // block 100
+    //   expect(await this.rewardToken.balanceOf(this.bob.address)).to.equal("0")
 
-      // won't be got the reward because didn't stake AIW nft
-      await this.chef.connect(this.bob).deposit(0, 0, { from: this.bob.address }) // block 101
-      expect(await this.rewardToken.balanceOf(this.bob.address)).to.equal("0")
+    //   // won't be got the reward because didn't stake AIW nft
+    //   await this.chef.connect(this.bob).deposit(0, 0, { from: this.bob.address }) // block 101
+    //   expect(await this.rewardToken.balanceOf(this.bob.address)).to.equal("0")
 
-      await this.boostToken.gift(1, this.bob.address) //block 102
-      await this.boostToken.setStakingAddress(this.chef.address)  //block 103
-      await this.chef.updateClaimBaseRewardTime(0)  //block 104
-      await this.chef.updateUnstakableTime(1)  //block 105
-      await this.boostToken.connect(this.bob).setApprovalForAll(this.chef.address, true, { from: this.bob.address }) // block 106
-      await this.chef.connect(this.bob).boost(0, 1, { from: this.bob.address }) // block 107
-      await time.advanceBlockTo("116")
-      await this.chef.connect(this.bob).deposit(0, 0, { from: this.bob.address }) // block 117
-      expect(await this.rewardToken.balanceOf(this.bob.address)).to.equal("1000")
-      expect(await this.boostToken.balanceOf(this.bob.address)).to.equal("0")
-      expect(await this.rewardToken.balanceOf(this.bob.address)).to.equal("1000")
-    })
+    //   await this.boostToken.gift(1, this.bob.address) //block 102
+    //   await this.boostToken.setStakingAddress(this.chef.address)  //block 103
+    //   await this.chef.updateClaimBaseRewardTime(0)  //block 104
+    //   await this.chef.updateUnstakableTime(1)  //block 105
+    //   await this.boostToken.connect(this.bob).setApprovalForAll(this.chef.address, true, { from: this.bob.address }) // block 106
+    //   await this.chef.connect(this.bob).boost(0, 1, { from: this.bob.address }) // block 107
+    //   await time.advanceBlockTo("116")
+    //   await this.chef.connect(this.bob).deposit(0, 0, { from: this.bob.address }) // block 117
+    //   expect(await this.rewardToken.balanceOf(this.bob.address)).to.equal("1000")
+    //   expect(await this.boostToken.balanceOf(this.bob.address)).to.equal("0")
+    //   expect(await this.rewardToken.balanceOf(this.bob.address)).to.equal("1000")
+    // })
 
     it("should not distribute ANNs if no one deposit and can't withdraw until unstakableTime", async function() {
       this.chef = await this.AnnexBoostFarm.deploy(
@@ -246,10 +247,10 @@ describe("AnnexBoostFarm", function() {
       await this.chef.connect(this.alice).boost(0, 16, { from: this.alice.address }) // block 333
 
       await this.chef.connect(this.bob).deposit(0, 0, { from: this.bob.address }) // block 334
-      expect(await this.rewardToken.balanceOf(this.bob.address)).to.equal("150")
+      expect(await this.rewardToken.balanceOf(this.bob.address)).to.equal("250")
       
       await this.chef.connect(this.alice).deposit(0, 0, { from: this.alice.address }) // block 335
-      expect(await this.rewardToken.balanceOf(this.alice.address)).to.equal("50")
+      expect(await this.rewardToken.balanceOf(this.alice.address)).to.equal("100")
 
       // bob boost one more nft
       await this.chef.connect(this.bob).boost(0, 2, { from: this.bob.address }) // block 336
@@ -287,8 +288,8 @@ describe("AnnexBoostFarm", function() {
       expect(await this.chef.pendingBoostReward(0, this.carol.address)).to.equal("0")
       expect(await this.chef.pendingReward(0, this.carol.address)).to.equal("500")
 
-      expect(await this.chef.pendingBaseReward(0, this.alice.address)).to.equal("250")
-      expect(await this.chef.pendingBaseReward(0, this.bob.address)).to.equal("250")
+      expect(await this.chef.pendingBaseReward(0, this.alice.address)).to.equal("800")
+      expect(await this.chef.pendingBaseReward(0, this.bob.address)).to.equal("1350")
     })
 
     // it("should give proper ANNs allocation to each pool", async function() {
@@ -407,7 +408,7 @@ describe("AnnexBoostFarm", function() {
       await this.chef.connect(this.carol).boost(0, 31, { from: this.carol.address }) // block 414
 
       await time.advanceBlockTo("525")
-      expect(await this.chef.pendingBaseReward(0, this.alice.address)).to.equal("327")
+      expect(await this.chef.pendingBaseReward(0, this.alice.address)).to.equal("367")
       expect(await this.chef.pendingBaseReward(0, this.carol.address)).to.equal("81")
       await this.chef.connect(this.bob).deposit(0, 0, { from: this.bob.address }) // block 526
       await time.advanceBlockTo("537")
