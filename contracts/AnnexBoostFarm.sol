@@ -441,7 +441,7 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.amount + user.pendingAmount >= _amount, "withdraw: not good");
-        require(block.timestamp - user.depositedDate > unstakableTime, "not eligible to undtake");
+        require(block.timestamp - user.depositedDate > unstakableTime, "not eligible to withdraw");
         updatePool(_pid);
         _claimBaseRewards(_pid, msg.sender);
         if (user.amount > 0) {
