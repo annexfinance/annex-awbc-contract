@@ -292,62 +292,62 @@ describe("AnnexBoostFarm", function() {
       expect(await this.chef.pendingBaseReward(0, this.bob.address)).to.equal("1350")
     })
 
-    // it("should give proper ANNs allocation to each pool", async function() {
-    //   this.chef = await this.AnnexBoostFarm.deploy(
-    //     this.annex.address,
-    //     this.rewardToken.address,
-    //     this.vAnn.address,
-    //     this.boostToken.address,
-    //     "100",
-    //     "100",
-    //     "0"
-    //   )
-    //   await this.chef.deployed()
+    it("should give proper ANNs allocation to each pool", async function() {
+      this.chef = await this.AnnexBoostFarm.deploy(
+        this.annex.address,
+        this.rewardToken.address,
+        this.vAnn.address,
+        this.boostToken.address,
+        "100",
+        "100",
+        "0"
+      )
+      await this.chef.deployed()
 
-    //   this.rewardToken.transfer(this.chef.address, "10000")
-    //   this.vAnn.transferOwnership(this.chef.address, true, false)
-    //   await this.boostToken.setStakingAddress(this.chef.address)
-    //   await this.chef.updateClaimBaseRewardTime(0)
-    //   await this.chef.updateUnstakableTime(1)
-    //   await this.chef.updateClaimBoostRewardTime(0)
+      this.rewardToken.transfer(this.chef.address, "10000")
+      this.vAnn.transferOwnership(this.chef.address, true, false)
+      await this.boostToken.setStakingAddress(this.chef.address)
+      await this.chef.updateClaimBaseRewardTime(0)
+      await this.chef.updateUnstakableTime(1)
+      await this.chef.updateClaimBoostRewardTime(0)
 
-    //   await this.chef.add("100", this.annex.address, true)
-    //   await this.annex.connect(this.alice).approve(this.chef.address, "1000", {
-    //     from: this.alice.address,
-    //   })
-    //   await this.annex.connect(this.bob).approve(this.chef.address, "1000", {
-    //     from: this.bob.address,
-    //   })
-    //   await this.annex.connect(this.carol).approve(this.chef.address, "1000", {
-    //     from: this.carol.address,
-    //   })
+      await this.chef.add("100", this.annex.address, true)
+      await this.annex.connect(this.alice).approve(this.chef.address, "1000", {
+        from: this.alice.address,
+      })
+      await this.annex.connect(this.bob).approve(this.chef.address, "1000", {
+        from: this.bob.address,
+      })
+      await this.annex.connect(this.carol).approve(this.chef.address, "1000", {
+        from: this.carol.address,
+      })
 
-    //   await this.boostToken.gift(5, this.bob.address)
-    //   await this.boostToken.gift(10, this.alice.address)
-    //   await this.boostToken.gift(15, this.carol.address)
+      await this.boostToken.gift(5, this.bob.address)
+      await this.boostToken.gift(10, this.alice.address)
+      await this.boostToken.gift(15, this.carol.address)
 
-    //   // await this.lp.connect(this.alice).approve(this.chef.address, "1000", { from: this.alice.address })
-    //   // await this.lp2.connect(this.bob).approve(this.chef.address, "1000", { from: this.bob.address })
-    //   // // Add first LP to the pool with allocation 1
-    //   // await this.chef.add("10", this.lp.address, true)
-    //   // // Alice deposits 10 LPs at block 410
-    //   // await time.advanceBlockTo("409")
-    //   // await this.chef.connect(this.alice).deposit(0, "10", { from: this.alice.address })
-    //   // // Add LP2 to the pool with allocation 2 at block 420
-    //   // await time.advanceBlockTo("419")
-    //   // await this.chef.add("20", this.lp2.address, true)
-    //   // // Alice should have 10*1000 pending reward
-    //   // expect(await this.chef.pendingAnnex(0, this.alice.address)).to.equal("10000")
-    //   // // Bob deposits 10 LP2s at block 425
-    //   // await time.advanceBlockTo("424")
-    //   // await this.chef.connect(this.bob).deposit(1, "5", { from: this.bob.address })
-    //   // // Alice should have 10000 + 5*1/3*1000 = 11666 pending reward
-    //   // expect(await this.chef.pendingAnnex(0, this.alice.address)).to.equal("11666")
-    //   // await time.advanceBlockTo("430")
-    //   // // At block 430. Bob should get 5*2/3*1000 = 3333. Alice should get ~1666 more.
-    //   // expect(await this.chef.pendingAnnex(0, this.alice.address)).to.equal("13333")
-    //   // expect(await this.chef.pendingAnnex(1, this.bob.address)).to.equal("3333")
-    // })
+      // await this.lp.connect(this.alice).approve(this.chef.address, "1000", { from: this.alice.address })
+      // await this.lp2.connect(this.bob).approve(this.chef.address, "1000", { from: this.bob.address })
+      // // Add first LP to the pool with allocation 1
+      // await this.chef.add("10", this.lp.address, true)
+      // // Alice deposits 10 LPs at block 410
+      // await time.advanceBlockTo("409")
+      // await this.chef.connect(this.alice).deposit(0, "10", { from: this.alice.address })
+      // // Add LP2 to the pool with allocation 2 at block 420
+      // await time.advanceBlockTo("419")
+      // await this.chef.add("20", this.lp2.address, true)
+      // // Alice should have 10*1000 pending reward
+      // expect(await this.chef.pendingAnnex(0, this.alice.address)).to.equal("10000")
+      // // Bob deposits 10 LP2s at block 425
+      // await time.advanceBlockTo("424")
+      // await this.chef.connect(this.bob).deposit(1, "5", { from: this.bob.address })
+      // // Alice should have 10000 + 5*1/3*1000 = 11666 pending reward
+      // expect(await this.chef.pendingAnnex(0, this.alice.address)).to.equal("11666")
+      // await time.advanceBlockTo("430")
+      // // At block 430. Bob should get 5*2/3*1000 = 3333. Alice should get ~1666 more.
+      // expect(await this.chef.pendingAnnex(0, this.alice.address)).to.equal("13333")
+      // expect(await this.chef.pendingAnnex(1, this.bob.address)).to.equal("3333")
+    })
 
     it("should get all of p0ending boost rewards", async function() {
       this.chef = await this.AnnexBoostFarm.deploy(
@@ -421,6 +421,7 @@ describe("AnnexBoostFarm", function() {
       await this.chef.connect(this.carol).deposit(0, 0, { from: this.carol.address }) // block 550
       await time.advanceBlockTo("561")
       expect(await this.chef.pendingBaseReward(0, this.carol.address)).to.equal("100")
+      await this.chef.connect(this.carol).unBoost(0, 31, { from: this.carol.address })
       // console.log(await this.chef.getUserInfo(0, this.carol.address))
     })
   })

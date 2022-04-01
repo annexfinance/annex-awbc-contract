@@ -768,6 +768,41 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         emit UnBoost(msg.sender, _pid, _tokenId);
     }
 
+    function unBoost(uint _pid, uint _tokenId) external {
+        PoolInfo storage pool = poolInfo[_pid];
+        UserInfo storage user = userInfo[_pid][msg.sender];
+        require(user.boostFactors.length > 0, "");
+
+        bool claimEligible = checkRewardClaimEligible(user.depositedDate);
+        updatePool(_pid);
+        if (claimEligible) {
+            _claimBaseRewards(_pid, msg.sender);
+        }
+
+        _unBoost(_pid, _tokenId);
+        user.boostFactors.pop();
+        pool.totalBoostCount = pool.totalBoostCount - 1;
+
+        user.boostedDate = block.timestamp;
+
+        if (user.boostFactors.length == 0) {
+            user.pendingAmount = user.amount;
+            user.amount = 0;
+            pool.rewardEligibleSupply = pool.rewardEligibleSupply.sub(user.pendingAmount);
+
+            uint index;
+            for (uint j; j < boostedUsers[_pid].length; j++) {
+                if (address(msg.sender) == address(boostedUsers[_pid][j])) {
+                    index = j;
+                    break;
+                }
+            }
+            boostedUsers[_pid][index] = boostedUsers[_pid][boostedUsers[_pid].length - 1];
+            boostedUsers[_pid].pop();
+        }
+        user.rewardDebt = user.amount.mul(pool.accRewardPerShare).div(accMulFactor);
+    }
+
     function unBoostPartially(uint _pid, uint tokenAmount) external {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
