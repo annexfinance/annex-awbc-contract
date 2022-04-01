@@ -98,7 +98,7 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
     uint256 public totalAllocPoint = 0;
     // The block number when ANN mining starts.
     uint256 public startBlock;
-    uint256 private accMulFactor = 1e18;
+    uint256 private accMulFactor = 1e12;
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(
@@ -524,6 +524,10 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         } else {
             IERC20(rewardToken).transfer(_to, _amount);
         }
+    }
+
+    function setAccMulFactor(uint256 _factor) external onlyOwner {
+        accMulFactor = _factor;
     }
 
     function updateInitialBoostMultiplier(uint _initialBoostMultiplier) external onlyOwner {
