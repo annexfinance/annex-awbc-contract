@@ -451,6 +451,9 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
             user.pendingAmount = user.pendingAmount.sub(_amount);
         }
         user.rewardDebt = user.amount.mul(pool.accRewardPerShare).div(accMulFactor);
+        // will loose unclaimed boost reward
+        user.accBoostReward = 0;
+        user.boostRewardDebt = 0;
         if (annex == address(pool.lpToken)) {
             lpSupplyOfAnnPool = lpSupplyOfAnnPool.sub(_amount);
         }
@@ -715,6 +718,7 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         _boost(_pid, _tokenId);
         user.rewardDebt = user.amount.mul(pool.accRewardPerShare).div(accMulFactor);
         user.boostedDate = block.timestamp;
+        user.depositedDate = block.timestamp;
     }
 
     function boostPartially(uint _pid, uint tokenAmount) external {
@@ -741,6 +745,7 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         } while (tokenAmount > 0);
         user.rewardDebt = user.amount.mul(pool.accRewardPerShare).div(accMulFactor);
         user.boostedDate = block.timestamp;
+        user.depositedDate = block.timestamp;
     }
 
     function boostAll(uint _pid) external {
@@ -770,6 +775,7 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         } while (tokenAmount > 0);
         user.rewardDebt = user.amount.mul(pool.accRewardPerShare).div(accMulFactor);
         user.boostedDate = block.timestamp;
+        user.depositedDate = block.timestamp;
     }
 
     function _unBoost(uint _pid, uint _tokenId) internal {
@@ -799,6 +805,9 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         pool.totalBoostCount = pool.totalBoostCount - 1;
 
         user.boostedDate = block.timestamp;
+        // will loose unclaimed boost reward
+        user.accBoostReward = 0;
+        user.boostRewardDebt = 0;
 
         if (user.boostFactors.length == 0) {
             user.pendingAmount = user.amount;
@@ -838,6 +847,9 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
             pool.totalBoostCount = pool.totalBoostCount - 1;
         }
         user.boostedDate = block.timestamp;
+        // will loose unclaimed boost reward
+        user.accBoostReward = 0;
+        user.boostRewardDebt = 0;
 
         if (user.boostFactors.length == 0) {
             user.pendingAmount = user.amount;
@@ -876,6 +888,9 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
             pool.totalBoostCount = pool.totalBoostCount - 1;
         } while (user.boostFactors.length > 0);
         user.boostedDate = block.timestamp;
+        // will loose unclaimed boost reward
+        user.accBoostReward = 0;
+        user.boostRewardDebt = 0;
 
         if (user.boostFactors.length == 0) {
             user.pendingAmount = user.amount;
