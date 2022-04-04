@@ -454,6 +454,7 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         // will loose unclaimed boost reward
         user.accBoostReward = 0;
         user.boostRewardDebt = 0;
+        user.boostedDate = block.timestamp;
         if (annex == address(pool.lpToken)) {
             lpSupplyOfAnnPool = lpSupplyOfAnnPool.sub(_amount);
         }
@@ -484,7 +485,10 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
             sender.pendingAmount = sender.pendingAmount.sub(amount);
         }
         sender.rewardDebt = sender.amount.mul(pool.accRewardPerShare).div(accMulFactor);
-        sender.depositedDate = block.timestamp;
+        sender.boostedDate = block.timestamp;
+        // will loose unclaimed boost reward
+        sender.accBoostReward = 0;
+        sender.boostRewardDebt = 0;
 
         bool claimEligible = checkRewardClaimEligible(recipient.depositedDate);
         bool rewardEligible = checkRewardEligible(recipient.boostFactors.length);
@@ -500,7 +504,6 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
             recipient.pendingAmount = recipient.pendingAmount.add(amount);
         }
         recipient.rewardDebt = recipient.amount.mul(pool.accRewardPerShare).div(accMulFactor);
-        recipient.depositedDate = block.timestamp;
         recipient.boostedDate = block.timestamp;
     }
 
@@ -718,7 +721,6 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         _boost(_pid, _tokenId);
         user.rewardDebt = user.amount.mul(pool.accRewardPerShare).div(accMulFactor);
         user.boostedDate = block.timestamp;
-        user.depositedDate = block.timestamp;
     }
 
     function boostPartially(uint _pid, uint tokenAmount) external {
@@ -745,7 +747,6 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         } while (tokenAmount > 0);
         user.rewardDebt = user.amount.mul(pool.accRewardPerShare).div(accMulFactor);
         user.boostedDate = block.timestamp;
-        user.depositedDate = block.timestamp;
     }
 
     function boostAll(uint _pid) external {
@@ -775,7 +776,6 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         } while (tokenAmount > 0);
         user.rewardDebt = user.amount.mul(pool.accRewardPerShare).div(accMulFactor);
         user.boostedDate = block.timestamp;
-        user.depositedDate = block.timestamp;
     }
 
     function _unBoost(uint _pid, uint _tokenId) internal {
