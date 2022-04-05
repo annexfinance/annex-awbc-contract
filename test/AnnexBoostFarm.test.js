@@ -603,6 +603,9 @@ describe("AnnexBoostFarm", function() {
       await this.chef.connect(this.bob).boostPartially(0, 4, { from: this.bob.address }) // block 708
 
       await this.chef.connect(this.alice).unBoostPartially(0, 3, { from: this.alice.address }) // block 709
+      await time.advanceBlockTo("800")
+      await this.chef.connect(this.bob).unBoostPartially(0, 3, { from: this.bob.address }) // block 710
+      await time.advanceBlockTo("900")
       await this.chef.connect(this.bob).unBoostAll(0, { from: this.bob.address }) // block 710
     })
   })
