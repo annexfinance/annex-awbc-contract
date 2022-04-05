@@ -801,6 +801,14 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         }
 
         _unBoost(_pid, _tokenId);
+        uint dfId; // will be deleted factor index
+        for (uint j; j < user.boostFactors.length; j++) {
+            if (_tokenId == user.boostFactors[j]) {
+                dfId = j;
+                break;
+            }
+        }
+        user.boostFactors[dfId] = user.boostFactors[user.boostFactors.length - 1];
         user.boostFactors.pop();
         pool.totalBoostCount = pool.totalBoostCount - 1;
 
@@ -838,8 +846,9 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         if (claimEligible) {
             _claimBaseRewards(_pid, msg.sender);
         }
-        for (uint i; i < tokenAmount; i++) {
-            uint index = user.boostFactors.length - 1;
+        uint factorLength = user.boostFactors.length;
+        for (uint i = 1; i <= tokenAmount; i++) {
+            uint index = factorLength - i;
             uint _tokenId = user.boostFactors[index];
 
             _unBoost(_pid, _tokenId);
@@ -879,14 +888,16 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         if (claimEligible) {
             _claimBaseRewards(_pid, msg.sender);
         }
-        do {
-            uint index = user.boostFactors.length - 1;
+        uint factorLength = user.boostFactors.length;
+        uint dfIndex = user.boostFactors.length;
+        for (uint i = 1; i <= factorLength; i++) {
+            uint index = dfIndex - i;
             uint _tokenId = user.boostFactors[index];
 
             _unBoost(_pid, _tokenId);
             user.boostFactors.pop();
             pool.totalBoostCount = pool.totalBoostCount - 1;
-        } while (user.boostFactors.length > 0);
+        }
         user.boostedDate = block.timestamp;
         // will loose unclaimed boost reward
         user.accBoostReward = 0;

@@ -482,7 +482,6 @@ describe("AnnexBoostFarm", function() {
       // console.log(await this.chef.getUserInfo(0, this.carol.address))
     })
 
-
     it("should reset timers and lost boost rewards", async function() {
       this.chef = await this.AnnexBoostFarm.deploy(
         this.annex.address,
@@ -550,6 +549,61 @@ describe("AnnexBoostFarm", function() {
       await this.chef.connect(this.alice).withdraw(0, "10", { from: this.alice.address }) // block 618
       expect(await this.chef.pendingBaseReward(0, this.alice.address)).to.equal("0")
       expect(await this.chef.pendingBoostReward(0, this.alice.address)).to.equal("0")
+    })
+
+    it("should boost/unbost successfully", async function() {
+      this.chef = await this.AnnexBoostFarm.deploy(
+        this.annex.address,
+        this.rewardToken.address,
+        this.vAnn.address,
+        this.boostToken.address,
+        "100",
+        "100",
+        "0"
+      )
+      await this.chef.deployed()
+
+      this.rewardToken.transfer(this.chef.address, "10000")
+      this.vAnn.setStakingInfo(this.chef.address, 0)
+      this.vAnn.transferOwnership(this.chef.address, true, false)
+      await this.boostToken.setStakingAddress(this.chef.address)
+      await this.chef.updateClaimBaseRewardTime(0)
+      await this.chef.updateUnstakableTime(0)
+      await this.chef.updateClaimBoostRewardTime(0)
+
+      await this.boostToken.gift(15, this.bob.address)
+      await this.boostToken.gift(15, this.alice.address)
+      await this.boostToken.gift(15, this.carol.address)
+      await this.boostToken.connect(this.bob).setApprovalForAll(this.chef.address, true, { from: this.bob.address })
+      await this.boostToken.connect(this.alice).setApprovalForAll(this.chef.address, true, { from: this.alice.address })
+      await this.boostToken.connect(this.carol).setApprovalForAll(this.chef.address, true, { from: this.carol.address })
+
+      await this.chef.add("100", this.annex.address, true)
+      await this.annex.connect(this.alice).approve(this.chef.address, "1000", {
+        from: this.alice.address,
+      })
+      await this.annex.connect(this.bob).approve(this.chef.address, "1000", {
+        from: this.bob.address,
+      })
+      await this.annex.connect(this.carol).approve(this.chef.address, "1000", {
+        from: this.carol.address,
+      })
+
+      await time.advanceBlockTo("700")
+      await this.chef.connect(this.bob).deposit(0, "50", { from: this.bob.address }) // block 701
+      await this.chef.connect(this.alice).deposit(0, "50", { from: this.alice.address }) // block 702
+      expect(await this.vAnn.balanceOf(this.bob.address)).to.equal("500")
+      expect(await this.vAnn.balanceOf(this.alice.address)).to.equal("500")
+      await this.chef.connect(this.bob).boost(0, 1, { from: this.bob.address }) // block 703
+      await this.chef.connect(this.alice).boost(0, 16, { from: this.alice.address }) // block 704
+      await this.chef.connect(this.alice).boost(0, 17, { from: this.alice.address }) // block 705
+
+      await this.chef.connect(this.bob).boostPartially(0, 3, { from: this.bob.address }) // block 706
+      await this.chef.connect(this.alice).boostAll(0, { from: this.alice.address }) // block 707
+      await this.chef.connect(this.bob).boostPartially(0, 4, { from: this.bob.address }) // block 708
+
+      await this.chef.connect(this.alice).unBoostPartially(0, 3, { from: this.alice.address }) // block 709
+      await this.chef.connect(this.bob).unBoostAll(0, { from: this.bob.address }) // block 710
     })
   })
 })
