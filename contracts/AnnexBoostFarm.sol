@@ -389,8 +389,8 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
             if (baseReward > 0) {
                 safeRewardTransfer(_user, baseReward);
             }
-            user.depositedDate = block.timestamp;
         }
+        user.depositedDate = block.timestamp;
     }
 
     function claimBaseRewards(uint256 _pid) external {
@@ -406,12 +406,9 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         updatePool(_pid);
-        bool claimEligible = checkRewardClaimEligible(user.depositedDate);
         bool rewardEligible = checkRewardEligible(user.boostFactors.length);
 
-        if (claimEligible && rewardEligible) {
-            _claimBaseRewards(_pid, msg.sender);
-        }
+        _claimBaseRewards(_pid, msg.sender);
 
         pool.lpToken.safeTransferFrom(
             address(msg.sender),
@@ -748,7 +745,9 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         user.boostedDate = block.timestamp;
     }
 
-    function boostAll(uint _pid) external {
+    function boostAll(uint _pid, uint256[] memory _tokenIds) external {
+        uint256 tokenIdLength = _tokenIds.length;
+        require(tokenIdLength > 0, "");
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.amount + user.pendingAmount > 0, "no stake tokens");
         uint256 ownerTokenCount = boostFactor.balanceOf(msg.sender);
@@ -757,9 +756,11 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
         if (user.boostFactors.length == 0) {
             boostedUsers[_pid].push(msg.sender);
         }
-        uint256 tokenAmount = maximumBoostCount - user.boostFactors.length;
-        if (ownerTokenCount < tokenAmount) {
-            tokenAmount = ownerTokenCount;
+        uint256 availableTokenAmount = maximumBoostCount - user.boostFactors.length;
+        require(availableTokenAmount > 0, "overflow maximum boosting");
+
+        if (tokenIdLength < availableTokenAmount) {
+            availableTokenAmount = tokenIdLength;
         }
         bool claimEligible = checkRewardClaimEligible(user.depositedDate);
         updatePool(_pid);
@@ -767,11 +768,8 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
             _claimBaseRewards(_pid, msg.sender);
         }
 
-        uint leftAmount = ownerTokenCount - tokenAmount;
-        for (uint i = ownerTokenCount - 1; i >= leftAmount; i--) {
-            uint _tokenId = boostFactor.tokenOfOwnerByIndex(msg.sender, i);
-
-            _boost(_pid, _tokenId);
+        for (uint256 i; i < availableTokenAmount; i++) {
+            _boost(_pid, _tokenIds[i]);
         }
         user.rewardDebt = user.amount.mul(pool.accRewardPerShare).div(accMulFactor);
         user.boostedDate = block.timestamp;

@@ -328,7 +328,7 @@ describe("AnnexBoostFarm", function() {
       expect(await this.chef.pendingReward(0, this.bob.address)).to.equal("1930")
 
       // alice balance
-      await this.chef.connect(this.alice).boostAll(0, { from: this.alice.address }) // block 363
+      await this.chef.connect(this.alice).boostAll(0, [17,18,19,20,21,22,23,24,25,26,27,28,29,30], { from: this.alice.address }) // block 363
       await time.advanceBlockTo("373")
       expect(await this.chef.pendingBaseReward(0, this.alice.address)).to.equal("500")
       expect(await this.chef.pendingBoostReward(0, this.alice.address)).to.equal("1000")
@@ -599,7 +599,7 @@ describe("AnnexBoostFarm", function() {
       await this.chef.connect(this.alice).boost(0, 17, { from: this.alice.address }) // block 705
 
       await this.chef.connect(this.bob).boostPartially(0, 3, { from: this.bob.address }) // block 706
-      await this.chef.connect(this.alice).boostAll(0, { from: this.alice.address }) // block 707
+      await this.chef.connect(this.alice).boostAll(0, [18,19,20,21,22,23,24,25,26,27,28,29,30], { from: this.alice.address }) // block 707
       await this.chef.connect(this.bob).boostPartially(0, 4, { from: this.bob.address }) // block 708
 
       await this.chef.connect(this.alice).unBoostPartially(0, 3, { from: this.alice.address }) // block 709
