@@ -924,15 +924,4 @@ contract AnnexBoostFarm is Ownable, ReentrancyGuard {
     function updateMaximumBoostCount(uint16 _count) external onlyOwner {
         maximumBoostCount = _count;
     }
-
-    // Withdraw NFTs which transferred unexpectedly
-    function emergencyNftWithdraw() external nonReentrant onlyOwner {
-        uint256 ownerTokenCount = boostFactor.balanceOf(address(this));
-
-        for (uint256 i; i < ownerTokenCount; i++) {
-            uint _tokenId = boostFactor.tokenOfOwnerByIndex(address(this), i);
-
-            boostFactor.safeTransferFrom(address(this), msg.sender, _tokenId);
-        }
-    }
 }
